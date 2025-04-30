@@ -63,7 +63,7 @@ const Home = () => {
               onClick={handleLearnMoreClick}
               className={styles.secondaryButton}
             >
-              Explore Gallery
+              Explore 
             </button>
           </div>
         </div>
