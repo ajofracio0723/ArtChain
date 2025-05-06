@@ -26,8 +26,7 @@ const contractABI = [
         components: [
           { internalType: "string", name: "title", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "price", type: "string" }
+          { internalType: "string", name: "size", type: "string" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -47,8 +46,7 @@ const contractABI = [
         components: [
           { internalType: "string", name: "title", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "price", type: "string" }
+          { internalType: "string", name: "size", type: "string" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -66,10 +64,21 @@ const contractABI = [
     ],
     stateMutability: "view",
     type: "function"
+  },
+  {
+    inputs: [
+      { internalType: "string", name: "_title", type: "string" },
+      { internalType: "string", name: "_artist", type: "string" },
+      { internalType: "string", name: "_size", type: "string" }
+    ],
+    name: "addProduct",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function"
   }
 ];
 
-const contractAddress = '0x6Cec02D6AEe75e7e5604c9bbCe3c7560ed4af364';
+const contractAddress = '0x1d0eae7e912237c982750485aa9ca0443c2588d5';
 
 // Product Details Modal Component
 const ProductDetailsModal = ({ product, isOpen, onClose }) => {
@@ -102,11 +111,6 @@ const ProductDetailsModal = ({ product, isOpen, onClose }) => {
               <div className={styles.modalDetailItem}>
                 <span className={styles.modalDetailLabel}>Size</span>
                 <span className={styles.modalDetailValue}>{product.size}</span>
-              </div>
-              
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Price</span>
-                <span className={styles.modalDetailValue}>{product.price}</span>
               </div>
             </div>
             
@@ -231,6 +235,12 @@ const ViewProducts = () => {
     document.body.style.overflow = 'auto';
   };
 
+  // Handler for registering new artwork
+  const handleRegisterArtwork = () => {
+    // Navigate to registration page
+    window.location.href = '/register-product';
+  };
+
   // Filter products based on search term
   const filteredProducts = products.filter(product => 
     product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -326,10 +336,6 @@ const ViewProducts = () => {
                       <span className={styles.detailLabel}>Size:</span>
                       <span className={styles.detailValue}>{product.size}</span>
                     </div>
-                    <div className={styles.productDetail}>
-                      <span className={styles.detailLabel}>Price:</span>
-                      <span className={styles.detailValue}>{product.price}</span>
-                    </div>
                   </div>
                   <div className={styles.verifiedBadge}>
                     <CheckCircle size={14} className={styles.verifyIcon} />
@@ -348,7 +354,7 @@ const ViewProducts = () => {
         ) : (
           <div className={styles.emptyState}>
             <p>{ownerView ? "You haven't registered any artworks yet." : "No artworks found in the registry."}</p>
-            <button className={styles.primaryButton}>Register a New Artwork</button>
+            <button className={styles.primaryButton} onClick={handleRegisterArtwork}>Register a New Artwork</button>
           </div>
         )}
       </section>

@@ -6,14 +6,12 @@ import Web3 from 'web3';
 import QRCode from 'qrcode';
 import styles from '../styles/AddProductForm.module.css';
 
-// Unchanged contract ABI
 const contractABI = [
   {
     inputs: [
       { internalType: "string", name: "_title", type: "string" },
       { internalType: "string", name: "_artist", type: "string" },
-      { internalType: "string", name: "_size", type: "string" },
-      { internalType: "string", name: "_price", type: "string" }
+      { internalType: "string", name: "_size", type: "string" }
     ],
     name: "addProduct",
     outputs: [],
@@ -35,8 +33,7 @@ const contractABI = [
         components: [
           { internalType: "string", name: "title", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "price", type: "string" }
+          { internalType: "string", name: "size", type: "string" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -48,13 +45,12 @@ const contractABI = [
   }
 ];
 
-const contractAddress = '0x6Cec02D6AEe75e7e5604c9bbCe3c7560ed4af364';
+const contractAddress = '0x452721c91bb0f7eaeb48636bc047e2c1772712d8';
 
 const AddProductForm = () => {
   const [productName, setProductName] = useState('');
   const [artistName, setArtistName] = useState('');
   const [size, setSize] = useState('');
-  const [price, setPrice] = useState('');
   const [registeredDateTime, setRegisteredDateTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qrCodeData, setQRCodeData] = useState('');
@@ -66,7 +62,6 @@ const AddProductForm = () => {
   const [networkId, setNetworkId] = useState(null);
   const canvasRef = useRef(null);
 
-  // Generate QR code when data changes
   useEffect(() => {
     if (qrCodeData && canvasRef.current) {
       QRCode.toCanvas(canvasRef.current, qrCodeData, {
@@ -81,7 +76,6 @@ const AddProductForm = () => {
         if (error) console.error(error);
       });
 
-      // Also generate a data URL for download
       QRCode.toDataURL(qrCodeData, {
         errorCorrectionLevel: 'M',
         margin: 1,
@@ -93,32 +87,27 @@ const AddProductForm = () => {
     }
   }, [qrCodeData]);
 
-  // Web3 initialization
   useEffect(() => {
     const initWeb3 = async () => {
       if (window.ethereum) {
         const web3Instance = new Web3(window.ethereum);
         try {
-          // Request account access
           const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
           });
           
-          // Get current network ID
           const networkId = await web3Instance.eth.net.getId();
-          // Convert networkId to a regular number to avoid BigInt serialization issues
           setNetworkId(Number(networkId));
           
           setWeb3(web3Instance);
           setAccount(accounts[0]);
 
-          // Set up listeners for account and network changes
           window.ethereum.on('accountsChanged', (newAccounts) => {
             setAccount(newAccounts[0]);
           });
           
           window.ethereum.on('chainChanged', (chainId) => {
-            window.location.reload(); // Recommended by MetaMask docs to reload on chain change
+            window.location.reload();
           });
 
           const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
@@ -126,7 +115,6 @@ const AddProductForm = () => {
         } catch (error) {
           console.error("Web3 initialization failed", error);
           if (error.code === 4001) {
-            // User rejected request
             alert("Please connect your MetaMask wallet to use this application");
           } else {
             alert("Error connecting to MetaMask. Please check the console for details.");
@@ -138,7 +126,6 @@ const AddProductForm = () => {
     };
     initWeb3();
 
-    // Cleanup function to remove event listeners
     return () => {
       if (window.ethereum && window.ethereum.removeListener) {
         window.ethereum.removeListener('accountsChanged', () => {});
@@ -147,9 +134,44 @@ const AddProductForm = () => {
     };
   }, []);
 
+  const handleTransactionError = (error) => {
+    console.log("Transaction error:", error);
+    
+    setIsSubmitting(false);
+    
+    if (
+      error.code === 4001 || 
+      (typeof error.message === 'string' && error.message.includes("User denied transaction")) ||
+      (typeof error.message === 'string' && error.message.includes("user rejected"))
+    ) {
+      console.log("Transaction was cancelled by user");
+      return;
+    }
+    
+    if (error.message) {
+      if (error.message.includes("Internal JSON-RPC error")) {
+        try {
+          const errorDetail = JSON.parse(error.message.substring(error.message.indexOf('{')));
+          alert(`MetaMask error: ${errorDetail.message || "Unknown internal error"}`);
+        } catch {
+          alert('Network error. Please verify you are connected to the correct network in MetaMask.');
+        }
+      } else if (error.message.includes("gas required exceeds allowance")) {
+        alert('Transaction requires more gas than allowed. Please increase your gas limit.');
+      } else if (error.message.includes("insufficient funds")) {
+        alert('Insufficient funds to complete this transaction. Please check your balance.');
+      } else {
+        alert(`Transaction failed: ${error.message}`);
+      }
+    } else {
+      alert('An unknown error occurred during the transaction.');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!productName || !artistName || !size || !price) {
+    
+    if (!productName || !artistName || !size) {
       alert('Please fill in all required fields');
       return;
     }
@@ -162,82 +184,54 @@ const AddProductForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Convert registration fee from ETH to Wei
       const feeInWei = web3.utils.toWei(registrationFee.toString(), 'ether');
       
-      // Make a direct contract call instead of estimating gas
       const receipt = await contract.methods.addProduct(
         productName,
         artistName,
-        size,
-        price
+        size
       ).send({
         from: account,
-        value: feeInWei,
-        // Let MetaMask handle the gas estimation automatically
+        value: feeInWei
+      })
+      .on('error', (error) => {
+        throw error;
+      })
+      .on('transactionHash', (hash) => {
+        console.log("Transaction submitted with hash:", hash);
       });
 
       console.log("Transaction successful:", receipt);
 
-      // Update UI with successful registration
       const formattedDate = getCurrentDateTime();
       setRegisteredDateTime(formattedDate);
 
-      // Make sure all values are JSON-serializable (convert any BigInt to string or number)
       const qrData = {
         title: productName,
         artist: artistName,
         size: size,
-        price: `${price} PHP`,
         registeredDate: formattedDate,
         transactionHash: receipt.transactionHash,
         contractAddress: contract.options.address,
         registeredBy: account,
-        networkId: networkId ? String(networkId) : "unknown" // Convert networkId to string
+        networkId: networkId ? String(networkId) : "unknown"
       };
 
-      // Now stringify the data with all safe values
       setQRCodeData(JSON.stringify(qrData));
       
-      // Reset form
       setProductName('');
       setArtistName('');
       setSize('');
-      setPrice('');
       
       alert('Artwork successfully registered on the blockchain!');
       
     } catch (error) {
-      console.error("Transaction error:", error);
       handleTransactionError(error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Improved error handling
-  const handleTransactionError = (error) => {
-    if (error.code === 4001) {
-      alert('Transaction was rejected by user.');
-    } else if (error.message && error.message.includes("Internal JSON-RPC error")) {
-      // Parse the internal error if possible
-      try {
-        const errorDetail = JSON.parse(error.message.substring(error.message.indexOf('{')));
-        alert(`MetaMask RPC error: ${errorDetail.message || "Unknown internal error"}`);
-      } catch {
-        // Check if we're on the correct network
-        alert('RPC error occurred. Please verify you are connected to the correct network in MetaMask and that you have sufficient funds for gas fees.');
-      }
-    } else if (error.message && error.message.includes("gas required exceeds allowance")) {
-      alert('Transaction requires more gas than allowed. You may need to increase your gas limit in MetaMask.');
-    } else if (error.message && error.message.includes("insufficient funds")) {
-      alert('Insufficient funds to complete this transaction. Please check your account balance.');
-    } else {
-      alert(`Transaction failed: ${error.message || "Unknown error"}`);
-    }
-  };
-
-  // Helper functions
   const getCurrentDateTime = () => {
     const now = new Date();
     return formatDateTimeForDisplay(now);
@@ -325,19 +319,6 @@ const AddProductForm = () => {
                     required
                   />
                 </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="price" className={styles.formLabel}>Artwork Price (PHP)</label>
-                  <input 
-                    type="text" 
-                    id="price" 
-                    value={price} 
-                    onChange={(e) => setPrice(e.target.value)} 
-                    className={styles.formInput} 
-                    placeholder="Enter price in PHP"
-                    required
-                  />
-                </div>
                 
                 <div className={styles.formGroup}>
                   <label htmlFor="registrationFee" className={styles.formLabel}>Registration Fee (ETH)</label>
@@ -400,11 +381,6 @@ const AddProductForm = () => {
                   <div className={styles.qrInfoItem}>
                     <span className={styles.qrLabel}>Size:</span>
                     <span className={styles.qrValue}>{JSON.parse(qrCodeData).size}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Price:</span>
-                    <span className={styles.qrValue}>{JSON.parse(qrCodeData).price}</span>
                   </div>
                   
                   <div className={styles.qrInfoItem}>

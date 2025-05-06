@@ -1,4 +1,6 @@
 /* AddProductForm.module.css */
+
+
 .container {
   font-family: 'Playfair Display', 'Cormorant Garamond', serif;
   color: #f0f0f0;
@@ -310,4 +312,6 @@
   .primaryButton, .secondaryButton {
     width: 100%;
   }
+
+  
 }

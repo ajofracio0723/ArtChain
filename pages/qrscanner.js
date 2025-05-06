@@ -10,14 +10,13 @@ import { CheckCircle } from 'lucide-react';
 import jsQR from 'jsqr';
 import styles from '../styles/QRScanner.module.css';
 
-// Updated Contract ABI to match your ProductRegistry contract
+// Updated Contract ABI to match your new ProductRegistry contract
 const contractABI = [
   {
     inputs: [
       { internalType: "string", name: "_title", type: "string" },
       { internalType: "string", name: "_artist", type: "string" },
-      { internalType: "string", name: "_size", type: "string" },
-      { internalType: "string", name: "_price", type: "string" }
+      { internalType: "string", name: "_size", type: "string" }
     ],
     name: "addProduct",
     outputs: [],
@@ -39,8 +38,7 @@ const contractABI = [
         components: [
           { internalType: "string", name: "title", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "price", type: "string" }
+          { internalType: "string", name: "size", type: "string" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -61,8 +59,7 @@ const contractABI = [
         components: [
           { internalType: "string", name: "title", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "price", type: "string" }
+          { internalType: "string", name: "size", type: "string" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -88,11 +85,18 @@ const contractABI = [
     outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
     type: "function"
+  },
+  {
+    inputs: [],
+    name: "getContractBalance",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
   }
 ];
 
-const contractAddress = '0x6Cec02D6AEe75e7e5604c9bbCe3c7560ed4af364';
-const RPC_URL = 'http://127.0.0.1:8545';
+const contractAddress = '0x1d0eae7e912237c982750485aa9ca0443c2588d5';
+const RPC_URL = 'https://sepolia.infura.io/v3/0b71ad43bec649f691d94324ae744684';
 
 const QRScanner = () => {
   const router = useRouter();
@@ -375,7 +379,6 @@ const QRScanner = () => {
           `/product-status?title=${encodeURIComponent(details.title)}` +
           `&artist=${encodeURIComponent(details.artist)}` +
           `&size=${encodeURIComponent(details.size || '')}` +
-          `&price=${encodeURIComponent(details.price || '')}` +
           `&owner=${encodeURIComponent(verificationResult.owner)}` +
           `&isAuthentic=true` +
           `&productIndex=${verificationResult.productIndex}`
@@ -427,18 +430,16 @@ const QRScanner = () => {
               productDetails = {
                 title: params.get('title'),
                 artist: params.get('artist'),
-                size: params.get('size') || '',
-                price: params.get('price') || ''
+                size: params.get('size') || ''
               };
             } else {
-              // Simple format: might be title|artist
+              // Simple format: might be title|artist|size
               const parts = code.data.split('|');
               if (parts.length >= 2) {
                 productDetails = {
                   title: parts[0].trim(),
                   artist: parts[1].trim(),
-                  size: parts[2] || '',
-                  price: parts[3] || ''
+                  size: parts[2] || ''
                 };
               } else {
                 throw new Error('Unrecognized QR code format');
@@ -516,18 +517,16 @@ const QRScanner = () => {
                 productDetails = {
                   title: params.get('title'),
                   artist: params.get('artist'),
-                  size: params.get('size') || '',
-                  price: params.get('price') || ''
+                  size: params.get('size') || ''
                 };
               } else {
-                // Simple format: might be title|artist
+                // Simple format: might be title|artist|size
                 const parts = code.data.split('|');
                 if (parts.length >= 2) {
                   productDetails = {
                     title: parts[0].trim(),
                     artist: parts[1].trim(),
-                    size: parts[2] || '',
-                    price: parts[3] || ''
+                    size: parts[2] || ''
                   };
                 } else {
                   throw new Error('Unrecognized QR code format');

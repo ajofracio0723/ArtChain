@@ -6,7 +6,7 @@ contract ProductRegistry {
         string title;          // Artwork title
         string artist;         // Artist name
         string size;           // Artwork size
-        string price;          // Artwork price (stored as string)
+        // Removed price field
     }
 
     Product[] public products; // Array to store products
@@ -26,22 +26,20 @@ contract ProductRegistry {
         admin = msg.sender;
     }
 
-    // Simplified function without storing owner and timestamp
+    // Modified function without price parameter
     function addProduct(
         string memory _title,
         string memory _artist,
-        string memory _size,
-        string memory _price
+        string memory _size
     ) public payable {
         require(msg.value > 0, "Payment required to register artwork");
 
-        // Create new product with just the artwork details
+        // Create new product without price field
         uint256 newProductId = products.length;
         Product memory newProduct = Product({
             title: _title,
             artist: _artist,
-            size: _size,
-            price: _price
+            size: _size
         });
 
         // Add product to array

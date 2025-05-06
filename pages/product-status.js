@@ -35,16 +35,14 @@ const ProductStatus = () => {
     }
 
     // Get artwork details from query parameters
-    const { title, artist, size, price, owner, isAuthentic, productIndex } = router.query;
+    const { title, artist, size, owner, isAuthentic } = router.query;
     
     if (title && artist) {
       setArtworkData({
         title,
         artist,
         size: size || 'Unknown',
-        price: price || 'Unspecified',
-        owner: owner || 'Unknown',
-        productIndex: productIndex || '0'
+        owner: owner || 'Unknown'
       });
       
       setIsValid(isAuthentic === 'true');
@@ -65,21 +63,6 @@ const ProductStatus = () => {
   const truncateAddress = (address) => {
     if (!address || address === 'Unknown') return 'Unknown';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-
-  // Format timestamp to readable date if available
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    try {
-      const date = new Date(Number(timestamp) * 1000);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (error) {
-      return 'Invalid Date';
-    }
   };
 
   return (
@@ -128,16 +111,8 @@ const ProductStatus = () => {
                         <span className={styles.detailValue}>{artworkData?.size}</span>
                       </div>
                       <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Price</span>
-                        <span className={styles.detailValue}>{artworkData?.price}</span>
-                      </div>
-                      <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>Owner</span>
                         <span className={styles.detailValue}>{truncateAddress(artworkData?.owner)}</span>
-                      </div>
-                      <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Product ID</span>
-                        <span className={styles.detailValue}>#{artworkData?.productIndex}</span>
                       </div>
                     </div>
                   </div>
