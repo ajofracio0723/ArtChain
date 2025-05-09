@@ -6,12 +6,16 @@ import Web3 from 'web3';
 import QRCode from 'qrcode';
 import styles from '../styles/AddProductForm.module.css';
 
+// Updated ABI to match the contract structure
 const contractABI = [
   {
     inputs: [
       { internalType: "string", name: "_title", type: "string" },
+      { internalType: "string", name: "_description", type: "string" },
       { internalType: "string", name: "_artist", type: "string" },
-      { internalType: "string", name: "_size", type: "string" }
+      { internalType: "string", name: "_size", type: "string" },
+      { internalType: "string", name: "_medium", type: "string" },
+      { internalType: "uint16", name: "_yearCreated", type: "uint16" }
     ],
     name: "addProduct",
     outputs: [],
@@ -32,8 +36,13 @@ const contractABI = [
       {
         components: [
           { internalType: "string", name: "title", type: "string" },
+          { internalType: "string", name: "description", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" }
+          { internalType: "string", name: "size", type: "string" },
+          { internalType: "string", name: "medium", type: "string" },
+          { internalType: "uint16", name: "yearCreated", type: "uint16" },
+          { internalType: "address", name: "owner", type: "address" },
+          { internalType: "bool", name: "exists", type: "bool" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -42,15 +51,63 @@ const contractABI = [
     ],
     stateMutability: "view",
     type: "function"
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_productId", type: "uint256" }],
+    name: "getProductById",
+    outputs: [
+      {
+        components: [
+          { internalType: "string", name: "title", type: "string" },
+          { internalType: "string", name: "description", type: "string" },
+          { internalType: "string", name: "artist", type: "string" },
+          { internalType: "string", name: "size", type: "string" },
+          { internalType: "string", name: "medium", type: "string" },
+          { internalType: "uint16", name: "yearCreated", type: "uint16" },
+          { internalType: "address", name: "owner", type: "address" },
+          { internalType: "bool", name: "exists", type: "bool" }
+        ],
+        internalType: "struct ProductRegistry.Product",
+        name: "",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "productCount",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
   }
 ];
 
-const contractAddress = '0x452721c91bb0f7eaeb48636bc047e2c1772712d8';
+const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
+
+// Helper function to safely serialize BigInt values
+const safeSerialize = (obj) => {
+  return JSON.stringify(obj, (key, value) => {
+    // Convert BigInt to string for JSON serialization
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    // Convert any potential BigInt numbers returned from Web3
+    if (typeof value === 'object' && value !== null && typeof value.toString === 'function' && value._isBigNumber) {
+      return value.toString();
+    }
+    return value;
+  });
+};
 
 const AddProductForm = () => {
   const [productName, setProductName] = useState('');
+  const [description, setDescription] = useState('');
   const [artistName, setArtistName] = useState('');
   const [size, setSize] = useState('');
+  const [medium, setMedium] = useState('');
+  const [yearCreated, setYearCreated] = useState(new Date().getFullYear());
   const [registeredDateTime, setRegisteredDateTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qrCodeData, setQRCodeData] = useState('');
@@ -60,6 +117,7 @@ const AddProductForm = () => {
   const [account, setAccount] = useState('');
   const [registrationFee, setRegistrationFee] = useState(0.000001);
   const [networkId, setNetworkId] = useState(null);
+  const [productId, setProductId] = useState(null);
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -171,7 +229,7 @@ const AddProductForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!productName || !artistName || !size) {
+    if (!productName || !description || !artistName || !size || !medium || !yearCreated) {
       alert('Please fill in all required fields');
       return;
     }
@@ -186,10 +244,19 @@ const AddProductForm = () => {
     try {
       const feeInWei = web3.utils.toWei(registrationFee.toString(), 'ether');
       
+      // Get current product count before adding
+      const currentProductCount = await contract.methods.productCount().call();
+      
+      // Convert BigInt values to strings before use
+      const currentProductCountString = String(currentProductCount);
+      
       const receipt = await contract.methods.addProduct(
         productName,
+        description,
         artistName,
-        size
+        size,
+        medium,
+        parseInt(yearCreated)
       ).send({
         from: account,
         value: feeInWei
@@ -202,14 +269,22 @@ const AddProductForm = () => {
       });
 
       console.log("Transaction successful:", receipt);
+      
+      // Set the product ID (it should be the currentProductCount before adding)
+      setProductId(currentProductCountString);
 
       const formattedDate = getCurrentDateTime();
       setRegisteredDateTime(formattedDate);
 
+      // Ensure all values are primitives that can be properly serialized
       const qrData = {
+        productId: currentProductCountString,
         title: productName,
+        description: description,
         artist: artistName,
         size: size,
+        medium: medium,
+        yearCreated: String(yearCreated),
         registeredDate: formattedDate,
         transactionHash: receipt.transactionHash,
         contractAddress: contract.options.address,
@@ -217,11 +292,15 @@ const AddProductForm = () => {
         networkId: networkId ? String(networkId) : "unknown"
       };
 
-      setQRCodeData(JSON.stringify(qrData));
+      // Use the safe serialization helper
+      setQRCodeData(safeSerialize(qrData));
       
       setProductName('');
+      setDescription('');
       setArtistName('');
       setSize('');
+      setMedium('');
+      setYearCreated(new Date().getFullYear());
       
       alert('Artwork successfully registered on the blockchain!');
       
@@ -255,10 +334,23 @@ const AddProductForm = () => {
     if (qrCodeUrl) {
       const link = document.createElement('a');
       link.href = qrCodeUrl;
-      link.download = `${JSON.parse(qrCodeData).title || 'ArtCertificate'}.png`;
+      const qrDataObj = JSON.parse(qrCodeData);
+      link.download = `${qrDataObj.title || 'ArtCertificate'}.png`;
       link.click();
     }
   };
+
+  // Helper function to safely parse QR code data
+  const safeParseQrData = () => {
+    try {
+      return qrCodeData ? JSON.parse(qrCodeData) : null;
+    } catch (error) {
+      console.error("Error parsing QR data:", error);
+      return null;
+    }
+  };
+
+  const qrDataObj = safeParseQrData();
 
   return (
     <div className={styles.container}>
@@ -295,6 +387,19 @@ const AddProductForm = () => {
                 </div>
 
                 <div className={styles.formGroup}>
+                  <label htmlFor="description" className={styles.formLabel}>Artwork Description</label>
+                  <textarea 
+                    id="description" 
+                    value={description} 
+                    onChange={(e) => setDescription(e.target.value)} 
+                    className={styles.formInput} 
+                    placeholder="Describe the artwork"
+                    rows="3"
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
                   <label htmlFor="artistName" className={styles.formLabel}>Artist Name</label>
                   <input 
                     type="text" 
@@ -316,6 +421,33 @@ const AddProductForm = () => {
                     onChange={(e) => setSize(e.target.value)} 
                     className={styles.formInput} 
                     placeholder="e.g., 24x36 inches, 60x90 cm"
+                    required
+                  />
+                </div>
+                
+                <div className={styles.formGroup}>
+                  <label htmlFor="medium" className={styles.formLabel}>Medium</label>
+                  <input 
+                    type="text" 
+                    id="medium" 
+                    value={medium} 
+                    onChange={(e) => setMedium(e.target.value)} 
+                    className={styles.formInput} 
+                    placeholder="e.g., Oil on canvas, Acrylic, Digital"
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label htmlFor="yearCreated" className={styles.formLabel}>Year Created</label>
+                  <input 
+                    type="number" 
+                    id="yearCreated" 
+                    value={yearCreated} 
+                    onChange={(e) => setYearCreated(e.target.value)} 
+                    className={styles.formInput} 
+                    min="1000"
+                    max={new Date().getFullYear()}
                     required
                   />
                 </div>
@@ -358,7 +490,7 @@ const AddProductForm = () => {
             </div>
           </div>
 
-          {qrCodeData && (
+          {qrCodeData && qrDataObj && (
             <div className={styles.qrSection}>
               <div className={styles.card}>
                 <h2 className={styles.cardTitle}>Authentication Certificate</h2>
@@ -369,29 +501,53 @@ const AddProductForm = () => {
                 
                 <div className={styles.qrDetails}>
                   <div className={styles.qrInfoItem}>
+                    <span className={styles.qrLabel}>ID:</span>
+                    <span className={styles.qrValue}>{qrDataObj.productId}</span>
+                  </div>
+                  
+                  <div className={styles.qrInfoItem}>
                     <span className={styles.qrLabel}>Title:</span>
-                    <span className={styles.qrValue}>{JSON.parse(qrCodeData).title}</span>
+                    <span className={styles.qrValue}>{qrDataObj.title}</span>
+                  </div>
+                  
+                  <div className={styles.qrInfoItem}>
+                    <span className={styles.qrLabel}>Description:</span>
+                    <span className={styles.qrValue}>
+                      {qrDataObj.description.length > 30 
+                        ? qrDataObj.description.substring(0, 30) + '...' 
+                        : qrDataObj.description}
+                    </span>
                   </div>
                   
                   <div className={styles.qrInfoItem}>
                     <span className={styles.qrLabel}>Artist:</span>
-                    <span className={styles.qrValue}>{JSON.parse(qrCodeData).artist}</span>
+                    <span className={styles.qrValue}>{qrDataObj.artist}</span>
                   </div>
                   
                   <div className={styles.qrInfoItem}>
                     <span className={styles.qrLabel}>Size:</span>
-                    <span className={styles.qrValue}>{JSON.parse(qrCodeData).size}</span>
+                    <span className={styles.qrValue}>{qrDataObj.size}</span>
+                  </div>
+                  
+                  <div className={styles.qrInfoItem}>
+                    <span className={styles.qrLabel}>Medium:</span>
+                    <span className={styles.qrValue}>{qrDataObj.medium}</span>
+                  </div>
+                  
+                  <div className={styles.qrInfoItem}>
+                    <span className={styles.qrLabel}>Year Created:</span>
+                    <span className={styles.qrValue}>{qrDataObj.yearCreated}</span>
                   </div>
                   
                   <div className={styles.qrInfoItem}>
                     <span className={styles.qrLabel}>Registered:</span>
-                    <span className={styles.qrValue}>{JSON.parse(qrCodeData).registeredDate}</span>
+                    <span className={styles.qrValue}>{qrDataObj.registeredDate}</span>
                   </div>
                   
                   <div className={styles.qrInfoItem}>
                     <span className={styles.qrLabel}>Transaction:</span>
                     <span className={styles.qrValue}>
-                      {JSON.parse(qrCodeData).transactionHash.substring(0, 10)}...
+                      {qrDataObj.transactionHash.substring(0, 10)}...
                     </span>
                   </div>
                 </div>

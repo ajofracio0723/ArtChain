@@ -14,6 +14,7 @@ const ProductStatus = () => {
   const [artworkData, setArtworkData] = useState(null);
   const [isValid, setIsValid] = useState(false);
   const [errorReason, setErrorReason] = useState('');
+  const [productIndex, setProductIndex] = useState(null);
 
   // Loading effect similar to QRScanner
   useEffect(() => {
@@ -35,17 +36,34 @@ const ProductStatus = () => {
     }
 
     // Get artwork details from query parameters
-    const { title, artist, size, owner, isAuthentic } = router.query;
+    const { 
+      title, 
+      artist, 
+      size, 
+      medium, 
+      description, 
+      yearCreated, 
+      owner, 
+      isAuthentic, 
+      productIndex 
+    } = router.query;
     
     if (title && artist) {
       setArtworkData({
         title,
         artist,
         size: size || 'Unknown',
+        medium: medium || 'Unknown',
+        description: description || '',
+        yearCreated: yearCreated || 'Unknown',
         owner: owner || 'Unknown'
       });
       
       setIsValid(isAuthentic === 'true');
+      
+      if (productIndex) {
+        setProductIndex(Number(productIndex));
+      }
     } else {
       setIsValid(false);
       setErrorReason('Missing artwork information');
@@ -63,6 +81,21 @@ const ProductStatus = () => {
   const truncateAddress = (address) => {
     if (!address || address === 'Unknown') return 'Unknown';
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
+  // Format error messages in a user-friendly way
+  const formatErrorMessage = (message) => {
+    // Common blockchain error patterns
+    if (message.includes('not found') || message.includes('not registered')) {
+      return 'This artwork is not registered in our blockchain database.';
+    }
+    
+    if (message.includes('connection') || message.includes('network')) {
+      return 'Network connection issue. The blockchain could not be accessed.';
+    }
+    
+    // Return original message if no pattern matches
+    return message;
   };
 
   return (
@@ -110,11 +143,31 @@ const ProductStatus = () => {
                         <span className={styles.detailLabel}>Size</span>
                         <span className={styles.detailValue}>{artworkData?.size}</span>
                       </div>
+                      {artworkData?.medium && (
+                        <div className={styles.detailItem}>
+                          <span className={styles.detailLabel}>Medium</span>
+                          <span className={styles.detailValue}>{artworkData?.medium}</span>
+                        </div>
+                      )}
+                      {artworkData?.yearCreated && (
+                        <div className={styles.detailItem}>
+                          <span className={styles.detailLabel}>Year</span>
+                          <span className={styles.detailValue}>{artworkData?.yearCreated}</span>
+                        </div>
+                      )}
                       <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>Owner</span>
                         <span className={styles.detailValue}>{truncateAddress(artworkData?.owner)}</span>
                       </div>
+                    
                     </div>
+                    
+                    {artworkData?.description && (
+                      <div className={styles.descriptionItem}>
+                        <span className={styles.detailLabel}>Description</span>
+                        <p className={styles.detailDescription}>{artworkData?.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -139,11 +192,11 @@ const ProductStatus = () => {
                 <div className={styles.errorContent}>
                   <div className={styles.errorMessage}>
                     <MdError className={styles.errorIcon} />
-                    <p>{errorReason}</p>
+                    <p>{formatErrorMessage(errorReason)}</p>
                   </div>
                   <p className={styles.errorHelp}>
                     This artwork could not be verified on the blockchain. 
-                    It may be counterfeit or the QR code may be damaged.
+                    It may be counterfeit, the QR code may be damaged, or there might be a network issue.
                   </p>
                 </div>
               </div>

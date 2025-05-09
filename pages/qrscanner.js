@@ -15,8 +15,11 @@ const contractABI = [
   {
     inputs: [
       { internalType: "string", name: "_title", type: "string" },
+      { internalType: "string", name: "_description", type: "string" },
       { internalType: "string", name: "_artist", type: "string" },
-      { internalType: "string", name: "_size", type: "string" }
+      { internalType: "string", name: "_size", type: "string" },
+      { internalType: "string", name: "_medium", type: "string" },
+      { internalType: "uint16", name: "_yearCreated", type: "uint16" }
     ],
     name: "addProduct",
     outputs: [],
@@ -31,14 +34,42 @@ const contractABI = [
     type: "function"
   },
   {
+    inputs: [{ internalType: "uint256", name: "_productId", type: "uint256" }],
+    name: "getProductById",
+    outputs: [
+      {
+        components: [
+          { internalType: "string", name: "title", type: "string" },
+          { internalType: "string", name: "description", type: "string" },
+          { internalType: "string", name: "artist", type: "string" },
+          { internalType: "string", name: "size", type: "string" },
+          { internalType: "string", name: "medium", type: "string" },
+          { internalType: "uint16", name: "yearCreated", type: "uint16" },
+          { internalType: "address", name: "owner", type: "address" },
+          { internalType: "bool", name: "exists", type: "bool" }
+        ],
+        internalType: "struct ProductRegistry.Product",
+        name: "",
+        type: "tuple"
+      }
+    ],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
     inputs: [{ internalType: "address", name: "_owner", type: "address" }],
     name: "getProductsByOwner",
     outputs: [
       {
         components: [
           { internalType: "string", name: "title", type: "string" },
+          { internalType: "string", name: "description", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" }
+          { internalType: "string", name: "size", type: "string" },
+          { internalType: "string", name: "medium", type: "string" },
+          { internalType: "uint16", name: "yearCreated", type: "uint16" },
+          { internalType: "address", name: "owner", type: "address" },
+          { internalType: "bool", name: "exists", type: "bool" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -58,8 +89,13 @@ const contractABI = [
       {
         components: [
           { internalType: "string", name: "title", type: "string" },
+          { internalType: "string", name: "description", type: "string" },
           { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" }
+          { internalType: "string", name: "size", type: "string" },
+          { internalType: "string", name: "medium", type: "string" },
+          { internalType: "uint16", name: "yearCreated", type: "uint16" },
+          { internalType: "address", name: "owner", type: "address" },
+          { internalType: "bool", name: "exists", type: "bool" }
         ],
         internalType: "struct ProductRegistry.Product[]",
         name: "",
@@ -74,7 +110,14 @@ const contractABI = [
       { internalType: "address", name: "", type: "address" },
       { internalType: "uint256", name: "", type: "uint256" }
     ],
-    name: "ownerProductIndices",
+    name: "ownerProductIds",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function"
+  },
+  {
+    inputs: [],
+    name: "productCount",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function"
@@ -95,7 +138,7 @@ const contractABI = [
   }
 ];
 
-const contractAddress = '0x1d0eae7e912237c982750485aa9ca0443c2588d5';
+const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
 const RPC_URL = 'https://sepolia.infura.io/v3/0b71ad43bec649f691d94324ae744684';
 
 const QRScanner = () => {
@@ -235,7 +278,7 @@ const QRScanner = () => {
 
     try {
       // Get total products count
-      const totalProducts = await contract.methods.getTotalProducts().call();
+      const totalProducts = await contract.methods.productCount().call();
       const totalProductsNumber = Number(totalProducts);
       const batchSize = 20;
       
@@ -264,13 +307,10 @@ const QRScanner = () => {
             
             if (isTitleMatch && isArtistMatch) {
               const productIndex = i + j;
-              
-              // Find the product owner
-              const owner = await findProductOwner(productIndex);
-              
+
               return {
                 isAuthentic: true,
-                owner: owner || adminAddress,
+                owner: product.owner || adminAddress,
                 productIndex: productIndex,
                 details: product
               };
@@ -285,63 +325,6 @@ const QRScanner = () => {
       return { isAuthentic: false, reason: 'Artwork not found in blockchain registry' };
     } catch (error) {
       handleError(`Blockchain verification error: ${error.message}`);
-      return null;
-    }
-  };
-
-  // Improved function to find the owner of a product by its index
-  const findProductOwner = async (productIndex) => {
-    if (!contract || !web3 || accounts.length === 0) return null;
-    
-    try {
-      let adminAddress;
-      try {
-        adminAddress = await contract.methods.admin().call();
-      } catch (adminError) {
-        console.error('Error getting admin address:', adminError);
-        adminAddress = accounts[0]; // Use first account as fallback
-      }
-      
-      // Check each account if they own the product with the given index
-      for (const account of accounts) {
-        try {
-          // Get products owned by this account
-          const indices = [];
-          
-          // Try to get ownerProductIndices
-          try {
-            // Check if this account has any products by trying to access the first index
-            await contract.methods.ownerProductIndices(account, 0).call();
-            
-            // If we get here, the account has at least one product
-            // Let's try to find up to 20 products (common limit)
-            for (let i = 0; i < 20; i++) {
-              try {
-                const index = await contract.methods.ownerProductIndices(account, i).call();
-                indices.push(Number(index));
-              } catch (e) {
-                // Reached the end of the list
-                break;
-              }
-            }
-          } catch (e) {
-            // This account has no products
-            continue;
-          }
-          
-          // Check if this account owns the product with the given index
-          if (indices.includes(productIndex)) {
-            return account;
-          }
-        } catch (error) {
-          console.error(`Error checking account ${account}:`, error);
-        }
-      }
-      
-      // If no specific owner found, return admin as default
-      return adminAddress;
-    } catch (error) {
-      console.error('Error finding product owner:', error);
       return null;
     }
   };
@@ -379,6 +362,9 @@ const QRScanner = () => {
           `/product-status?title=${encodeURIComponent(details.title)}` +
           `&artist=${encodeURIComponent(details.artist)}` +
           `&size=${encodeURIComponent(details.size || '')}` +
+          `&medium=${encodeURIComponent(details.medium || '')}` +
+          `&description=${encodeURIComponent(details.description || '')}` +
+          `&yearCreated=${encodeURIComponent(details.yearCreated || '')}` +
           `&owner=${encodeURIComponent(verificationResult.owner)}` +
           `&isAuthentic=true` +
           `&productIndex=${verificationResult.productIndex}`
@@ -430,16 +416,22 @@ const QRScanner = () => {
               productDetails = {
                 title: params.get('title'),
                 artist: params.get('artist'),
-                size: params.get('size') || ''
+                size: params.get('size') || '',
+                medium: params.get('medium') || '',
+                description: params.get('description') || '',
+                yearCreated: params.get('yearCreated') || ''
               };
             } else {
-              // Simple format: might be title|artist|size
+              // Simple format: might be title|artist|size|medium|yearCreated
               const parts = code.data.split('|');
               if (parts.length >= 2) {
                 productDetails = {
                   title: parts[0].trim(),
                   artist: parts[1].trim(),
-                  size: parts[2] || ''
+                  size: parts[2] || '',
+                  medium: parts[3] || '',
+                  description: parts[4] || '',
+                  yearCreated: parts[5] || ''
                 };
               } else {
                 throw new Error('Unrecognized QR code format');
@@ -517,16 +509,22 @@ const QRScanner = () => {
                 productDetails = {
                   title: params.get('title'),
                   artist: params.get('artist'),
-                  size: params.get('size') || ''
+                  size: params.get('size') || '',
+                  medium: params.get('medium') || '',
+                  description: params.get('description') || '',
+                  yearCreated: params.get('yearCreated') || ''
                 };
               } else {
-                // Simple format: might be title|artist|size
+                // Simple format: might be title|artist|size|medium|yearCreated
                 const parts = code.data.split('|');
                 if (parts.length >= 2) {
                   productDetails = {
                     title: parts[0].trim(),
                     artist: parts[1].trim(),
-                    size: parts[2] || ''
+                    size: parts[2] || '',
+                    medium: parts[3] || '',
+                    description: parts[4] || '',
+                    yearCreated: parts[5] || ''
                   };
                 } else {
                   throw new Error('Unrecognized QR code format');
