@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Header from '../components/Header';
 import { FaEthereum, FaCubes, FaArtstation } from 'react-icons/fa';
 import { MdVerified, MdError } from 'react-icons/md';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Image } from 'lucide-react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import styles from '../styles/ProductStatus.module.css';
@@ -15,6 +15,8 @@ const ProductStatus = () => {
   const [isValid, setIsValid] = useState(false);
   const [errorReason, setErrorReason] = useState('');
   const [productIndex, setProductIndex] = useState(null);
+  const [artworkImage, setArtworkImage] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
 
   // Loading effect similar to QRScanner
   useEffect(() => {
@@ -49,7 +51,7 @@ const ProductStatus = () => {
     } = router.query;
     
     if (title && artist) {
-      setArtworkData({
+      const artwork = {
         title,
         artist,
         size: size || 'Unknown',
@@ -57,18 +59,72 @@ const ProductStatus = () => {
         description: description || '',
         yearCreated: yearCreated || 'Unknown',
         owner: owner || 'Unknown'
-      });
+      };
       
+      setArtworkData(artwork);
       setIsValid(isAuthentic === 'true');
       
       if (productIndex) {
         setProductIndex(Number(productIndex));
+      }
+      
+      // Fetch artwork image
+      if (isAuthentic === 'true') {
+        fetchArtworkImage(title, artist);
       }
     } else {
       setIsValid(false);
       setErrorReason('Missing artwork information');
     }
   }, [router.isReady, router.query]);
+
+  // Function to fetch artwork image from MongoDB
+  const fetchArtworkImage = async (title, artist) => {
+    try {
+      setImageLoading(true);
+      const response = await fetch(`/api/artwork-images?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`);
+      
+      if (response.ok) {
+        const imageData = await response.json();
+        if (imageData && imageData.length > 0) {
+          // Use the first image if there are multiple
+          setArtworkImage(imageData[0].image);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching artwork image:', error);
+      toast.error('Could not load artwork image');
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // Render artwork image or placeholder
+  const renderArtworkImage = () => {
+    if (imageLoading) {
+      return (
+        <div className={styles.loadingImage}>
+          <div className={styles.pulseCircle}></div>
+        </div>
+      );
+    }
+    
+    if (!artworkImage) {
+      return (
+        <div className={styles.imagePlaceholder}>
+          <FaArtstation className={styles.artIcon} />
+        </div>
+      );
+    }
+    
+    return (
+      <img 
+        src={artworkImage} 
+        alt={artworkData?.title}
+        className={styles.actualArtworkImage} 
+      />
+    );
+  };
 
   const handleBackToScanner = () => {
     router.push('/qrscanner');
@@ -87,7 +143,7 @@ const ProductStatus = () => {
   const formatErrorMessage = (message) => {
     // Common blockchain error patterns
     if (message.includes('not found') || message.includes('not registered')) {
-      return 'This artwork is not registered in our blockchain database.';
+      return 'This artwork is not registered in our blockchain Network.';
     }
     
     if (message.includes('connection') || message.includes('network')) {
@@ -128,10 +184,8 @@ const ProductStatus = () => {
                 
                 <div className={styles.artworkDetails}>
                   <div className={styles.artworkImage}>
-                    {/* Placeholder for artwork image */}
-                    <div className={styles.imagePlaceholder}>
-                      <FaArtstation className={styles.artIcon} />
-                    </div>
+                    {/* Now using actual artwork image or placeholder */}
+                    {renderArtworkImage()}
                   </div>
                   
                   <div className={styles.detailsContent}>
@@ -196,7 +250,7 @@ const ProductStatus = () => {
                   </div>
                   <p className={styles.errorHelp}>
                     This artwork could not be verified on the blockchain. 
-                    It may be counterfeit, the QR code may be damaged, or there might be a network issue.
+                    It may be not authentic, the QR code may be damaged, or there might be a network issue.
                   </p>
                 </div>
               </div>

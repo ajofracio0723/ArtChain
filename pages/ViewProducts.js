@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header2';
 import Web3 from 'web3';
 import styles from '../styles/ViewProducts.module.css';
-import { CheckCircle, Search, Filter, ChevronRight, User, Grid, List, X, ArrowLeft, AlertTriangle, Calendar, Book, PaintBucket } from 'lucide-react';
+import { CheckCircle, Search, Filter, ChevronRight, User, Grid, List, AlertTriangle, Image } from 'lucide-react';
+import ProductDetailsModal from './ProductDetailsModal';
 
-// Updated contract ABI to match your full Solidity contract
+// Contract ABI
 const contractABI = [
   {
     inputs: [],
@@ -103,7 +104,7 @@ const contractABI = [
   {
     inputs: [
       { internalType: "string", name: "_title", type: "string" },
-      { internalType: "string", name: "_description", type: "string" },
+      { internalType: "string", name: "description", type: "string" },
       { internalType: "string", name: "_artist", type: "string" },
       { internalType: "string", name: "_size", type: "string" },
       { internalType: "string", name: "_medium", type: "string" },
@@ -120,104 +121,14 @@ const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
 const EXPECTED_NETWORK_ID = '11155111'; // Ethereum Sepolia Network ID
 const EXPECTED_NETWORK_NAME = 'Sepolia Test Network';
 
-// Product Details Modal Component
-const ProductDetailsModal = ({ product, isOpen, onClose }) => {
-  if (!isOpen || !product) return null;
-  
-  // Format owner address for display
-  const formatAddress = (address) => {
-    if (!address) return '';
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-  };
-  
-  return (
-    <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <div className={styles.modalHeader}>
-          <button className={styles.modalCloseButton} onClick={onClose}>
-            <X size={24} />
-          </button>
-          <h2 className={styles.modalTitle}>{product.title}</h2>
-        </div>
-        
-        <div className={styles.modalBody}>
-          <div className={styles.productImagePlaceholder}>
-            <div className={styles.placeholderText}>Artwork Image</div>
-          </div>
-          
-          <div className={styles.modalProductDetails}>
-            <div className={styles.modalDetailSection}>
-              <h3 className={styles.modalDetailTitle}>Artwork Details</h3>
-              
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Artist</span>
-                <span className={styles.modalDetailValue}>{product.artist}</span>
-              </div>
-              
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Size</span>
-                <span className={styles.modalDetailValue}>{product.size}</span>
-              </div>
-
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Medium</span>
-                <span className={styles.modalDetailValue}>{product.medium || 'N/A'}</span>
-              </div>
-
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Year Created</span>
-                <span className={styles.modalDetailValue}>{product.yearCreated ? product.yearCreated.toString() : 'N/A'}</span>
-              </div>
-
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Owner</span>
-                <span className={styles.modalDetailValue}>{formatAddress(product.owner)}</span>
-              </div>
-            </div>
-            
-            <div className={styles.modalDetailSection}>
-              <h3 className={styles.modalDetailTitle}>Description</h3>
-              <p className={styles.modalDescription}>
-                {product.description || 'No description available.'}
-              </p>
-            </div>
-            
-            <div className={styles.modalDetailSection}>
-              <h3 className={styles.modalDetailTitle}>Blockchain Verification</h3>
-              
-              <div className={styles.verificationBadge}>
-                <CheckCircle size={16} className={styles.verifyIcon} />
-                <span>Verified on Blockchain</span>
-              </div>
-              
-              <p className={styles.modalDescription}>
-                This artwork has been registered on the blockchain, ensuring its authenticity and provenance. 
-                The digital certificate is immutable and provides a permanent record of ownership.
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className={styles.modalFooter}>
-          <button className={styles.modalBackButton} onClick={onClose}>
-            <ArrowLeft size={16} />
-            Back to Gallery
-          </button>
-          <button className={styles.modalPrimaryButton}>
-            View Certificate
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const ViewProducts = () => {
   const [products, setProducts] = useState([]);
+  const [artworkImages, setArtworkImages] = useState({});
   const [web3, setWeb3] = useState(null);
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState('');
   const [loading, setLoading] = useState(true);
+  const [imagesLoading, setImagesLoading] = useState(false);
   const [ownerView, setOwnerView] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
@@ -290,7 +201,6 @@ const ViewProducts = () => {
     if (window.ethereum) {
       window.ethereum.on('chainChanged', (chainId) => {
         // Handle the new chain
-        // Recommended: reload the page, unless you have a good reason not to
         window.location.reload();
       });
     }
@@ -343,6 +253,7 @@ const ViewProducts = () => {
     }
   }, [ownerView, contract, account, networkError]);
 
+  // Function to load blockchain products
   const loadProducts = async (contractInstance, currentAccount) => {
     try {
       setLoading(true);
@@ -366,8 +277,17 @@ const ViewProducts = () => {
         }
       }
       
+      // Assign product IDs for reference (these aren't in the blockchain data)
+      loadedProducts = loadedProducts.map((product, index) => ({
+        ...product,
+        productId: index.toString()
+      }));
+      
       setProducts(loadedProducts);
       setLoading(false);
+      
+      // After loading blockchain data, fetch the matching images
+      fetchArtworkImages(loadedProducts);
     } catch (error) {
       console.error("Error loading products:", error);
       // Check if the error is due to wrong network
@@ -380,9 +300,68 @@ const ViewProducts = () => {
     }
   };
 
+  // Function to fetch artwork images from MongoDB
+  const fetchArtworkImages = async (loadedProducts) => {
+    if (!loadedProducts || loadedProducts.length === 0) return;
+    
+    setImagesLoading(true);
+    const imagesMap = {};
+    
+    // For each product, try to fetch its corresponding images
+    for (const product of loadedProducts) {
+      try {
+        // Try to match by title and artist
+        const response = await fetch(`/api/artwork-images?title=${encodeURIComponent(product.title)}&artist=${encodeURIComponent(product.artist)}`);
+        
+        if (response.ok) {
+          const imageData = await response.json();
+          if (imageData && imageData.length > 0) {
+            // Map each product to its corresponding images
+            imagesMap[product.productId] = imageData;
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching images for product ${product.productId}:`, error);
+      }
+    }
+    
+    setArtworkImages(imagesMap);
+    setImagesLoading(false);
+  };
+
+  // Function to render the artwork image for a product
+  const renderArtworkImage = (productId) => {
+    const productImages = artworkImages[productId];
+    
+    if (!productImages || productImages.length === 0) {
+      return (
+        <div className={styles.placeholderImage}>
+          <Image size={48} />
+          <span>No image available</span>
+        </div>
+      );
+    }
+    
+    // Use the first image if there are multiple
+    const imageData = productImages[0].image;
+    
+    return (
+      <div className={styles.artworkImageContainer}>
+        <img 
+          src={imageData} 
+          alt={productImages[0].title}
+          className={styles.artworkImage} 
+        />
+      </div>
+    );
+  };
+
   // Open modal with selected product
   const handleViewDetails = (product) => {
-    setSelectedProduct(product);
+    setSelectedProduct({
+      ...product,
+      images: artworkImages[product.productId] || []
+    });
     setIsModalOpen(true);
     // Prevent body scrolling when modal is open
     document.body.style.overflow = 'hidden';
@@ -593,6 +572,9 @@ const ViewProducts = () => {
           <div className={viewMode === 'grid' ? styles.productsGrid : styles.productsList}>
             {filteredProducts.map((product, index) => (
               <div key={index} className={styles.productItem}>
+                {/* Artwork Image - New Addition */}
+                {renderArtworkImage(product.productId)}
+                
                 <div className={styles.productContent}>
                   <h3 className={styles.productTitle}>{product.title}</h3>
                   <div className={styles.productDetails}>
@@ -623,7 +605,13 @@ const ViewProducts = () => {
                       <CheckCircle size={14} className={styles.verifyIcon} />
                       Blockchain Record
                     </div>
-                
+                    
+                    {artworkImages[product.productId] && artworkImages[product.productId].length > 0 && (
+                      <div className={styles.imageBadge}>
+                        <Image size={14} className={styles.imageIcon} />
+                        Image Available
+                      </div>
+                    )}
                   </div>
                   
                   {product.description && viewMode === 'list' && (
@@ -658,7 +646,7 @@ const ViewProducts = () => {
         )}
       </section>
       
-      {/* Product Details Modal */}
+      {/* Product Details Modal with images */}
       <ProductDetailsModal 
         product={selectedProduct}
         isOpen={isModalOpen}

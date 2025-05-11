@@ -654,6 +654,11 @@ const QRScanner = () => {
     router.push('/');
   };
 
+  // Handle the upload button click
+  const handleUploadClick = () => {
+    fileInputRef.current.click();
+  };
+
   return (
     <div className={styles.container}>
       <Header />
@@ -721,7 +726,7 @@ const QRScanner = () => {
           
           <div className={styles.scannerButtons}>
             <button
-              onClick={() => fileInputRef.current.click()}
+              onClick={handleUploadClick}
               className={styles.primaryButton}
               disabled={isLoading || showSuccessAnimation}
             >
@@ -735,10 +740,10 @@ const QRScanner = () => {
               Back to Gallery
             </button>
           </div>
+          {/* Fixed file input to prevent camera opening on mobile */}
           <input
             type="file"
             accept="image/*"
-            capture="environment"
             ref={fileInputRef}
             style={{ display: 'none' }}
             onChange={handleFileInputChange}

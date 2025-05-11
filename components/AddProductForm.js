@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from '../components/Header2';
-import { FaDownload } from 'react-icons/fa';
+import { FaDownload, FaUpload } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import Web3 from 'web3';
 import QRCode from 'qrcode';
@@ -119,6 +119,13 @@ const AddProductForm = () => {
   const [networkId, setNetworkId] = useState(null);
   const [productId, setProductId] = useState(null);
   const canvasRef = useRef(null);
+  
+  // New state for image upload
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
+  const [imageName, setImageName] = useState('');
 
   useEffect(() => {
     if (qrCodeData && canvasRef.current) {
@@ -191,6 +198,97 @@ const AddProductForm = () => {
       }
     };
   }, []);
+
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImageUploadError('');
+    
+    if (!file) {
+      setImageFile(null);
+      setImagePreview(null);
+      setImageName('');
+      return;
+    }
+    
+    // Validate file type
+    if (!file.type.match('image.*')) {
+      setImageUploadError('Please select an image file (JPEG, PNG, etc.)');
+      return;
+    }
+    
+    // Validate file size (limiting to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setImageUploadError('Image size should be less than 5MB');
+      return;
+    }
+    
+    setImageFile(file);
+    setImageName(file.name);
+    
+    // Generate preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Function to upload image to MongoDB
+  const uploadImageToMongoDB = async (productData) => {
+    if (!imageFile) return null;
+    
+    setUploadingImage(true);
+    
+    try {
+      // Convert image file to base64 for storage
+      const base64Image = await convertFileToBase64(imageFile);
+      
+      // Create the payload for MongoDB
+      const imageData = {
+        productId: productData.productId,
+        title: productData.title,
+        artist: productData.artist,
+        transactionHash: productData.transactionHash,
+        image: base64Image,
+        fileName: imageName,
+        uploadedAt: new Date().toISOString()
+      };
+      
+      // Send to API route that connects to MongoDB
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(imageData),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Image upload to database failed');
+      }
+      
+      const result = await response.json();
+      console.log('Image uploaded to MongoDB:', result);
+      return result.imageId;
+      
+    } catch (error) {
+      console.error('Error uploading image to MongoDB:', error);
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+  
+  // Helper function to convert file to base64
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
 
   const handleTransactionError = (error) => {
     console.log("Transaction error:", error);
@@ -276,8 +374,8 @@ const AddProductForm = () => {
       const formattedDate = getCurrentDateTime();
       setRegisteredDateTime(formattedDate);
 
-      // Ensure all values are primitives that can be properly serialized
-      const qrData = {
+      // Create product data object
+      const productData = {
         productId: currentProductCountString,
         title: productName,
         description: description,
@@ -292,8 +390,25 @@ const AddProductForm = () => {
         networkId: networkId ? String(networkId) : "unknown"
       };
 
+      // Upload image to MongoDB if available
+      let imageId = null;
+      if (imageFile) {
+        try {
+          imageId = await uploadImageToMongoDB(productData);
+          console.log('Image stored in MongoDB with ID:', imageId);
+        } catch (error) {
+          console.error('Failed to store image in MongoDB:', error);
+          alert('Artwork registered on blockchain, but image upload failed. Please try again later.');
+        }
+      }
+
+      // Add imageId to product data if available
+      if (imageId) {
+        productData.imageId = imageId;
+      }
+
       // Use the safe serialization helper
-      setQRCodeData(safeSerialize(qrData));
+      setQRCodeData(safeSerialize(productData));
       
       setProductName('');
       setDescription('');
@@ -301,8 +416,12 @@ const AddProductForm = () => {
       setSize('');
       setMedium('');
       setYearCreated(new Date().getFullYear());
+      setImageFile(null);
+      setImagePreview(null);
+      setImageName('');
       
-      alert('Artwork successfully registered on the blockchain!');
+      alert('Artwork successfully registered on the blockchain!' + 
+           (imageId ? ' Image stored in database.' : ''));
       
     } catch (error) {
       handleTransactionError(error);
@@ -452,6 +571,45 @@ const AddProductForm = () => {
                   />
                 </div>
                 
+                {/* New Image Upload Field */}
+                <div className={styles.formGroup}>
+                  <label htmlFor="artworkImage" className={styles.formLabel}>
+                    Artwork Image <span className={styles.optionalText}>(optional)</span>
+                  </label>
+                  
+                  <div className={styles.fileUploadContainer}>
+                    <input
+                      type="file"
+                      id="artworkImage"
+                      onChange={handleImageChange}
+                      className={styles.fileInput}
+                      accept="image/*"
+                    />
+                    <label htmlFor="artworkImage" className={styles.fileInputLabel}>
+                      <FaUpload className={styles.uploadIcon} />
+                      {imageName || 'Choose Image'}
+                    </label>
+                  </div>
+                  
+                  {imageUploadError && (
+                    <p className={styles.errorText}>{imageUploadError}</p>
+                  )}
+                  
+                  {imagePreview && (
+                    <div className={styles.imagePreviewContainer}>
+                      <img 
+                        src={imagePreview} 
+                        alt="Artwork preview" 
+                        className={styles.imagePreview} 
+                      />
+                    </div>
+                  )}
+                  
+                  <p className={styles.formHelper}>
+                    Image will be stored in database, not on blockchain
+                  </p>
+                </div>
+                
                 <div className={styles.formGroup}>
                   <label htmlFor="registrationFee" className={styles.formLabel}>Registration Fee (ETH)</label>
                   <input 
@@ -481,9 +639,9 @@ const AddProductForm = () => {
                   <button 
                     type="submit" 
                     className={styles.primaryButton} 
-                    disabled={isSubmitting || !account || !contract}
+                    disabled={isSubmitting || uploadingImage || !account || !contract}
                   >
-                    {isSubmitting ? 'Processing...' : 'Register Artwork'}
+                    {isSubmitting || uploadingImage ? 'Processing...' : 'Register Artwork'}
                   </button>
                 </div>
               </form>
@@ -550,6 +708,15 @@ const AddProductForm = () => {
                       {qrDataObj.transactionHash.substring(0, 10)}...
                     </span>
                   </div>
+                  
+                  {qrDataObj.imageId && (
+                    <div className={styles.qrInfoItem}>
+                      <span className={styles.qrLabel}>Image Stored:</span>
+                      <span className={styles.qrValue}>
+                        <MdVerified className={styles.verifiedIconSmall} /> Yes
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 <button 

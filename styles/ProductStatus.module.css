@@ -1,4 +1,51 @@
 /* ProductStatus.module.css */
+
+
+/* Add these styles to your ProductStatus.module.css file */
+
+.actualArtworkImage {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loadingImage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+.artworkImage {
+  width: 240px;
+  height: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #f7f7f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .artworkImage {
+    width: 100%;
+    height: 200px;
+    margin-right: 0;
+    margin-bottom: 16px;
+  }
+  
+  .artworkDetails {
+    flex-direction: column;
+  }
+}
 .container {
     font-family: 'Playfair Display', 'Cormorant Garamond', serif;
     color: #f0f0f0;
