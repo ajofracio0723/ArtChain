@@ -54,11 +54,12 @@
     padding: 6rem 2rem;
     max-width: 1200px;
     margin: 0 auto;
+    
   }
   
   .missionSection {
     margin-bottom: 5rem;
-    text-align: center;
+    text-align: auto;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;
@@ -228,7 +229,7 @@
   
   .storySection {
     margin-bottom: 5rem;
-    text-align: center;
+    text-align: auto;
     max-width: 900px;
     margin-left: auto;
     margin-right: auto;

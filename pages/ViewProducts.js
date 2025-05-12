@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header2';
 import Web3 from 'web3';
 import styles from '../styles/ViewProducts.module.css';
-import { CheckCircle, Search, Filter, ChevronRight, User, Grid, List, AlertTriangle, Image } from 'lucide-react';
+import { CheckCircle, Search, Filter, ChevronRight, User, Grid, AlertTriangle, Image } from 'lucide-react';
 import ProductDetailsModal from './ProductDetailsModal';
 
 // Contract ABI
@@ -131,7 +131,6 @@ const ViewProducts = () => {
   const [imagesLoading, setImagesLoading] = useState(false);
   const [ownerView, setOwnerView] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [networkError, setNetworkError] = useState(false);
@@ -490,23 +489,6 @@ const ViewProducts = () => {
               Filter
             </button>
           </div>
-          
-          <div className={styles.displayToggle}>
-            <button 
-              className={`${styles.displayButton} ${viewMode === 'grid' ? styles.activeDisplayButton : ''}`}
-              onClick={() => setViewMode('grid')}
-              disabled={networkError}
-            >
-              <Grid size={18} />
-            </button>
-            <button 
-              className={`${styles.displayButton} ${viewMode === 'list' ? styles.activeDisplayButton : ''}`}
-              onClick={() => setViewMode('list')}
-              disabled={networkError}
-            >
-              <List size={18} />
-            </button>
-          </div>
         </div>
         
         {/* Filter Panel */}
@@ -569,10 +551,10 @@ const ViewProducts = () => {
             </button>
           </div>
         ) : filteredProducts.length > 0 ? (
-          <div className={viewMode === 'grid' ? styles.productsGrid : styles.productsList}>
+          <div className={styles.productsGrid}>
             {filteredProducts.map((product, index) => (
               <div key={index} className={styles.productItem}>
-                {/* Artwork Image - New Addition */}
+                {/* Artwork Image */}
                 {renderArtworkImage(product.productId)}
                 
                 <div className={styles.productContent}>
@@ -613,14 +595,6 @@ const ViewProducts = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {product.description && viewMode === 'list' && (
-                    <p className={styles.listItemDescription}>
-                      {product.description.length > 120 
-                        ? product.description.substring(0, 120) + '...' 
-                        : product.description}
-                    </p>
-                  )}
                 </div>
                 
                 <button 

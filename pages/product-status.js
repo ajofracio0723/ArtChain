@@ -250,7 +250,10 @@ const ProductStatus = () => {
                   </div>
                   <p className={styles.errorHelp}>
                     This artwork could not be verified on the blockchain. 
-                    It may be not authentic, the QR code may be damaged, or there might be a network issue.
+                    It may be not authentic, the QR code may be damaged, the image scanned or uploaded is not clear, or there might be a network issue.
+                      </p>
+                      <p className={styles.errorHelp}>
+                    TPLEASE TRY SCANNING AGAIN. 
                   </p>
                 </div>
               </div>

@@ -101,6 +101,9 @@ const safeSerialize = (obj) => {
   });
 };
 
+// The base URL for the QR Scanner page - updated to use the provided URL
+const QR_SCANNER_BASE_URL = "https://art-chain.vercel.app/";
+
 const AddProductForm = () => {
   const [productName, setProductName] = useState('');
   const [description, setDescription] = useState('');
@@ -112,6 +115,7 @@ const AddProductForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qrCodeData, setQRCodeData] = useState('');
   const [qrCodeUrl, setQRCodeUrl] = useState('');
+  const [scanUrl, setScanUrl] = useState(''); // New state for scannable URL
   const [web3, setWeb3] = useState(null);
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState('');
@@ -128,8 +132,8 @@ const AddProductForm = () => {
   const [imageName, setImageName] = useState('');
 
   useEffect(() => {
-    if (qrCodeData && canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, qrCodeData, {
+    if (scanUrl && canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, scanUrl, {
         errorCorrectionLevel: 'M',
         margin: 1,
         scale: 8,
@@ -141,7 +145,7 @@ const AddProductForm = () => {
         if (error) console.error(error);
       });
 
-      QRCode.toDataURL(qrCodeData, {
+      QRCode.toDataURL(scanUrl, {
         errorCorrectionLevel: 'M',
         margin: 1,
         scale: 8
@@ -150,7 +154,7 @@ const AddProductForm = () => {
         setQRCodeUrl(url);
       });
     }
-  }, [qrCodeData]);
+  }, [scanUrl]);
 
   useEffect(() => {
     const initWeb3 = async () => {
@@ -407,8 +411,15 @@ const AddProductForm = () => {
         productData.imageId = imageId;
       }
 
-      // Use the safe serialization helper
-      setQRCodeData(safeSerialize(productData));
+      // Store full JSON data
+      const serializedData = safeSerialize(productData);
+      setQRCodeData(serializedData);
+      
+      // Create a URL for the QR code that points to the provided URL
+      // with the data encoded as a query parameter
+      const encodedData = encodeURIComponent(serializedData);
+      const scannableUrl = `${QR_SCANNER_BASE_URL}?data=${encodedData}`;
+      setScanUrl(scannableUrl);
       
       setProductName('');
       setDescription('');
@@ -488,248 +499,251 @@ const AddProductForm = () => {
           Register <span className={styles.highlightText}>Artwork</span>
         </h1>
         
-        <div className={styles.contentGrid}>
-          <div className={styles.formSection}>
-            <div className={styles.card}>
-              <form onSubmit={handleSubmit}>
-                <div className={styles.formGroup}>
-                  <label htmlFor="productName" className={styles.formLabel}>Artwork Title</label>
-                  <input 
-                    type="text" 
-                    id="productName" 
-                    value={productName} 
-                    onChange={(e) => setProductName(e.target.value)} 
-                    className={styles.formInput} 
-                    placeholder="Enter artwork title"
-                    required
-                  />
-                </div>
+        {/* Form Section - Full Width */}
+        <div className={styles.formSection}>
+          <div className={styles.card}>
+            <form onSubmit={handleSubmit}>
+              <div className={styles.formGroup}>
+                <label htmlFor="productName" className={styles.formLabel}>Artwork Title</label>
+                <input 
+                  type="text" 
+                  id="productName" 
+                  value={productName} 
+                  onChange={(e) => setProductName(e.target.value)} 
+                  className={styles.formInput} 
+                  placeholder="Enter artwork title"
+                  required
+                />
+              </div>
 
-                <div className={styles.formGroup}>
-                  <label htmlFor="description" className={styles.formLabel}>Artwork Description</label>
-                  <textarea 
-                    id="description" 
-                    value={description} 
-                    onChange={(e) => setDescription(e.target.value)} 
-                    className={styles.formInput} 
-                    placeholder="Describe the artwork"
-                    rows="3"
-                    required
-                  />
-                </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="description" className={styles.formLabel}>Artwork Description</label>
+                <textarea 
+                  id="description" 
+                  value={description} 
+                  onChange={(e) => setDescription(e.target.value)} 
+                  className={styles.formInput} 
+                  placeholder="Describe the artwork"
+                  rows="3"
+                  required
+                />
+              </div>
 
-                <div className={styles.formGroup}>
-                  <label htmlFor="artistName" className={styles.formLabel}>Artist Name</label>
-                  <input 
-                    type="text" 
-                    id="artistName" 
-                    value={artistName} 
-                    onChange={(e) => setArtistName(e.target.value)} 
-                    className={styles.formInput} 
-                    placeholder="Enter artist name"
-                    required
-                  />
-                </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="artistName" className={styles.formLabel}>Artist Name</label>
+                <input 
+                  type="text" 
+                  id="artistName" 
+                  value={artistName} 
+                  onChange={(e) => setArtistName(e.target.value)} 
+                  className={styles.formInput} 
+                  placeholder="Enter artist name"
+                  required
+                />
+              </div>
 
-                <div className={styles.formGroup}>
-                  <label htmlFor="size" className={styles.formLabel}>Artwork Size</label>
-                  <input 
-                    type="text" 
-                    id="size" 
-                    value={size} 
-                    onChange={(e) => setSize(e.target.value)} 
-                    className={styles.formInput} 
-                    placeholder="e.g., 24x36 inches, 60x90 cm"
-                    required
-                  />
-                </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="size" className={styles.formLabel}>Artwork Size</label>
+                <input 
+                  type="text" 
+                  id="size" 
+                  value={size} 
+                  onChange={(e) => setSize(e.target.value)} 
+                  className={styles.formInput} 
+                  placeholder="e.g., 24x36 inches, 60x90 cm"
+                  required
+                />
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label htmlFor="medium" className={styles.formLabel}>Medium</label>
+                <input 
+                  type="text" 
+                  id="medium" 
+                  value={medium} 
+                  onChange={(e) => setMedium(e.target.value)} 
+                  className={styles.formInput} 
+                  placeholder="e.g., Oil on canvas, Acrylic, Digital"
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="yearCreated" className={styles.formLabel}>Year Created</label>
+                <input 
+                  type="number" 
+                  id="yearCreated" 
+                  value={yearCreated} 
+                  onChange={(e) => setYearCreated(e.target.value)} 
+                  className={styles.formInput} 
+                  min="1000"
+                  max={new Date().getFullYear()}
+                  required
+                />
+              </div>
+              
+              {/* New Image Upload Field */}
+              <div className={styles.formGroup}>
+                <label htmlFor="artworkImage" className={styles.formLabel}>
+                  Artwork Image <span className={styles.optionalText}>(optional)</span>
+                </label>
                 
-                <div className={styles.formGroup}>
-                  <label htmlFor="medium" className={styles.formLabel}>Medium</label>
-                  <input 
-                    type="text" 
-                    id="medium" 
-                    value={medium} 
-                    onChange={(e) => setMedium(e.target.value)} 
-                    className={styles.formInput} 
-                    placeholder="e.g., Oil on canvas, Acrylic, Digital"
-                    required
+                <div className={styles.fileUploadContainer}>
+                  <input
+                    type="file"
+                    id="artworkImage"
+                    onChange={handleImageChange}
+                    className={styles.fileInput}
+                    accept="image/*"
                   />
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label htmlFor="yearCreated" className={styles.formLabel}>Year Created</label>
-                  <input 
-                    type="number" 
-                    id="yearCreated" 
-                    value={yearCreated} 
-                    onChange={(e) => setYearCreated(e.target.value)} 
-                    className={styles.formInput} 
-                    min="1000"
-                    max={new Date().getFullYear()}
-                    required
-                  />
-                </div>
-                
-                {/* New Image Upload Field */}
-                <div className={styles.formGroup}>
-                  <label htmlFor="artworkImage" className={styles.formLabel}>
-                    Artwork Image <span className={styles.optionalText}>(optional)</span>
+                  <label htmlFor="artworkImage" className={styles.fileInputLabel}>
+                    <FaUpload className={styles.uploadIcon} />
+                    {imageName || 'Choose Image'}
                   </label>
-                  
-                  <div className={styles.fileUploadContainer}>
-                    <input
-                      type="file"
-                      id="artworkImage"
-                      onChange={handleImageChange}
-                      className={styles.fileInput}
-                      accept="image/*"
-                    />
-                    <label htmlFor="artworkImage" className={styles.fileInputLabel}>
-                      <FaUpload className={styles.uploadIcon} />
-                      {imageName || 'Choose Image'}
-                    </label>
-                  </div>
-                  
-                  {imageUploadError && (
-                    <p className={styles.errorText}>{imageUploadError}</p>
-                  )}
-                  
-                  {imagePreview && (
-                    <div className={styles.imagePreviewContainer}>
-                      <img 
-                        src={imagePreview} 
-                        alt="Artwork preview" 
-                        className={styles.imagePreview} 
-                      />
-                    </div>
-                  )}
-                  
-                  <p className={styles.formHelper}>
-                    Image will be stored in database, not on blockchain
-                  </p>
                 </div>
                 
-                <div className={styles.formGroup}>
-                  <label htmlFor="registrationFee" className={styles.formLabel}>Registration Fee (ETH)</label>
-                  <input 
-                    type="number" 
-                    step="0.000001" 
-                    id="registrationFee" 
-                    value={registrationFee} 
-                    onChange={(e) => setRegistrationFee(parseFloat(e.target.value) || 0)} 
-                    className={styles.formInput} 
-                  />
-                  <p className={styles.formHelper}>Fee paid to register artwork on blockchain</p>
-                </div>
+                {imageUploadError && (
+                  <p className={styles.errorText}>{imageUploadError}</p>
+                )}
                 
-                {registeredDateTime && (
-                  <div className={styles.formGroup}>
-                    <label className={styles.formLabel}>Date & Time Registered</label>
-                    <input 
-                      type="text" 
-                      value={registeredDateTime} 
-                      readOnly 
-                      className={`${styles.formInput} ${styles.readonlyInput}`} 
+                {imagePreview && (
+                  <div className={styles.imagePreviewContainer}>
+                    <img 
+                      src={imagePreview} 
+                      alt="Artwork preview" 
+                      className={styles.imagePreview} 
                     />
                   </div>
                 )}
                 
-                <div className={styles.buttonContainer}>
-                  <button 
-                    type="submit" 
-                    className={styles.primaryButton} 
-                    disabled={isSubmitting || uploadingImage || !account || !contract}
-                  >
-                    {isSubmitting || uploadingImage ? 'Processing...' : 'Register Artwork'}
-                  </button>
+                <p className={styles.formHelper}>
+                  Image will be stored in database, not on blockchain
+                </p>
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label htmlFor="registrationFee" className={styles.formLabel}>Registration Fee (ETH)</label>
+                <input 
+                  type="number" 
+                  step="0.000001" 
+                  id="registrationFee" 
+                  value={registrationFee} 
+                  onChange={(e) => setRegistrationFee(parseFloat(e.target.value) || 0)} 
+                  className={styles.formInput} 
+                />
+                <p className={styles.formHelper}>Fee paid to register artwork on blockchain</p>
+              </div>
+              
+              {registeredDateTime && (
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Date & Time Registered</label>
+                  <input 
+                    type="text" 
+                    value={registeredDateTime} 
+                    readOnly 
+                    className={`${styles.formInput} ${styles.readonlyInput}`} 
+                  />
                 </div>
-              </form>
-            </div>
-          </div>
-
-          {qrCodeData && qrDataObj && (
-            <div className={styles.qrSection}>
-              <div className={styles.card}>
-                <h2 className={styles.cardTitle}>Authentication Certificate</h2>
-                
-                <div className={styles.qrCodeContainer}>
-                  <canvas ref={canvasRef} className={styles.qrCanvas}></canvas>
-                </div>
-                
-                <div className={styles.qrDetails}>
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>ID:</span>
-                    <span className={styles.qrValue}>{qrDataObj.productId}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Title:</span>
-                    <span className={styles.qrValue}>{qrDataObj.title}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Description:</span>
-                    <span className={styles.qrValue}>
-                      {qrDataObj.description.length > 30 
-                        ? qrDataObj.description.substring(0, 30) + '...' 
-                        : qrDataObj.description}
-                    </span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Artist:</span>
-                    <span className={styles.qrValue}>{qrDataObj.artist}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Size:</span>
-                    <span className={styles.qrValue}>{qrDataObj.size}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Medium:</span>
-                    <span className={styles.qrValue}>{qrDataObj.medium}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Year Created:</span>
-                    <span className={styles.qrValue}>{qrDataObj.yearCreated}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Registered:</span>
-                    <span className={styles.qrValue}>{qrDataObj.registeredDate}</span>
-                  </div>
-                  
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Transaction:</span>
-                    <span className={styles.qrValue}>
-                      {qrDataObj.transactionHash.substring(0, 10)}...
-                    </span>
-                  </div>
-                  
-                  {qrDataObj.imageId && (
-                    <div className={styles.qrInfoItem}>
-                      <span className={styles.qrLabel}>Image Stored:</span>
-                      <span className={styles.qrValue}>
-                        <MdVerified className={styles.verifiedIconSmall} /> Yes
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
+              )}
+              
+              <div className={styles.buttonContainer}>
                 <button 
-                  className={styles.secondaryButton} 
-                  onClick={downloadQRCode}
+                  type="submit" 
+                  className={styles.primaryButton} 
+                  disabled={isSubmitting || uploadingImage || !account || !contract}
                 >
-                  <FaDownload className={styles.buttonIcon} /> Download Certificate
+                  {isSubmitting || uploadingImage ? 'Processing...' : 'Register Artwork'}
                 </button>
               </div>
-            </div>
-          )}
+            </form>
+          </div>
         </div>
       </div>
+      
+      {/* QR Code Section - Now Below the Form */}
+      {qrCodeData && qrDataObj && (
+        <div className={styles.qrContainer}>
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Authentication Certificate</h2>
+            
+            <div className={styles.qrContentWrapper}>
+              <div className={styles.qrCodeContainer}>
+                <canvas ref={canvasRef} className={styles.qrCanvas}></canvas>
+                <p className={styles.scanInstructions}>Scan with your phone camera</p>
+              </div>
+              
+              <div className={styles.qrDetails}>
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>ID:</span>
+                  <span className={styles.qrValue}>{qrDataObj.productId}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Title:</span>
+                  <span className={styles.qrValue}>{qrDataObj.title}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Description:</span>
+                  <span className={styles.qrValue}>
+                    {qrDataObj.description.length > 30 
+                      ? qrDataObj.description.substring(0, 30) + '...' 
+                      : qrDataObj.description}
+                  </span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Artist:</span>
+                  <span className={styles.qrValue}>{qrDataObj.artist}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Size:</span>
+                  <span className={styles.qrValue}>{qrDataObj.size}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Medium:</span>
+                  <span className={styles.qrValue}>{qrDataObj.medium}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Year Created:</span>
+                  <span className={styles.qrValue}>{qrDataObj.yearCreated}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Registered:</span>
+                  <span className={styles.qrValue}>{qrDataObj.registeredDate}</span>
+                </div>
+                
+                <div className={styles.qrInfoItem}>
+                  <span className={styles.qrLabel}>Transaction:</span>
+                  <span className={styles.qrValue}>
+                    {qrDataObj.transactionHash.substring(0, 10)}...
+                  </span>
+                </div>
+                
+                {qrDataObj.imageId && (
+                  <div className={styles.qrInfoItem}>
+                    <span className={styles.qrLabel}>Image Stored:</span>
+                    <span className={styles.qrValue}>
+                      <MdVerified className={styles.verifiedIconSmall} /> Yes
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <button 
+              className={styles.secondaryButton} 
+              onClick={downloadQRCode}
+            >
+              <FaDownload className={styles.buttonIcon} /> Download QR
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

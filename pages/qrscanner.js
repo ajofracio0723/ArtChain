@@ -141,6 +141,15 @@ const contractABI = [
 const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
 const RPC_URL = 'https://sepolia.infura.io/v3/0b71ad43bec649f691d94324ae744684';
 
+// List of websites that might be in the QR code URLs
+const QR_BASE_URL_PREFIXES = [
+  'https://art-chain.vercel.app/',
+  'http://art-chain.vercel.app/',
+  'https://www.art-chain.vercel.app/',
+  'http://www.art-chain.vercel.app/',
+  'art-chain.vercel.app'
+];
+
 const QRScanner = () => {
   const router = useRouter();
   const [web3, setWeb3] = useState(null);
@@ -384,7 +393,66 @@ const QRScanner = () => {
     }
   }, [router, handleError, networkError, verifyProductOnBlockchain]);
 
-  // Improved QR code processing to handle multiple formats
+  // Helper function to extract embedded JSON data from URLs
+  const extractDataFromQrCode = (rawData) => {
+    console.log("Raw QR data:", rawData);
+
+    // Check if the data is a URL with 'data=' parameter (from AddProductForm)
+    if (rawData.includes('?data=')) {
+      try {
+        // Find the data parameter
+        const dataParam = rawData.split('?data=')[1];
+        // Decode the URL-encoded JSON
+        const decodedData = decodeURIComponent(dataParam);
+        console.log("Decoded URL data:", decodedData);
+        return JSON.parse(decodedData);
+      } catch (error) {
+        console.error("Error extracting data from URL:", error);
+      }
+    }
+
+    // Check if the string is direct JSON
+    try {
+      return JSON.parse(rawData);
+    } catch (jsonError) {
+      console.log("Not direct JSON, trying other formats...");
+    }
+    
+    // Check if it's a URL with query params but not our specific format
+    if (rawData.includes('?') && rawData.includes('=')) {
+      try {
+        const params = new URLSearchParams(rawData.split('?')[1]);
+        return {
+          title: params.get('title'),
+          artist: params.get('artist'),
+          size: params.get('size') || '',
+          medium: params.get('medium') || '',
+          description: params.get('description') || '',
+          yearCreated: params.get('yearCreated') || ''
+        };
+      } catch (urlError) {
+        console.error("Error parsing URL params:", urlError);
+      }
+    }
+    
+    // Check if it's a pipe-delimited format
+    const parts = rawData.split('|');
+    if (parts.length >= 2) {
+      return {
+        title: parts[0].trim(),
+        artist: parts[1].trim(),
+        size: parts[2] || '',
+        medium: parts[3] || '',
+        description: parts[4] || '',
+        yearCreated: parts[5] || ''
+      };
+    }
+    
+    // If nothing worked, throw an error
+    throw new Error('Unrecognized QR code format');
+  };
+
+  // Improved QR code processing to handle multiple formats and bypass URLs
   const processQRCode = useCallback(async () => {
     const video = videoRef.current;
     if (!video || isProcessingRef.current || !isScanning) return false;
@@ -404,45 +472,17 @@ const QRScanner = () => {
       });
   
       if (code) {
+        console.log("QR Code detected:", code.data.substring(0, 100) + "...");
+        
         try {
-          // Try parsing as JSON first
-          let productDetails;
-          try {
-            productDetails = JSON.parse(code.data);
-          } catch (jsonError) {
-            // If not JSON, try to parse as URL with parameters
-            if (code.data.includes('?') && code.data.includes('=')) {
-              const params = new URLSearchParams(code.data.split('?')[1]);
-              productDetails = {
-                title: params.get('title'),
-                artist: params.get('artist'),
-                size: params.get('size') || '',
-                medium: params.get('medium') || '',
-                description: params.get('description') || '',
-                yearCreated: params.get('yearCreated') || ''
-              };
-            } else {
-              // Simple format: might be title|artist|size|medium|yearCreated
-              const parts = code.data.split('|');
-              if (parts.length >= 2) {
-                productDetails = {
-                  title: parts[0].trim(),
-                  artist: parts[1].trim(),
-                  size: parts[2] || '',
-                  medium: parts[3] || '',
-                  description: parts[4] || '',
-                  yearCreated: parts[5] || ''
-                };
-              } else {
-                throw new Error('Unrecognized QR code format');
-              }
-            }
-          }
-  
+          // Extract the data from whatever format it's in
+          const productDetails = extractDataFromQrCode(code.data);
+          
           if (!productDetails.title || !productDetails.artist) {
             throw new Error('Invalid artwork details in QR code');
           }
   
+          console.log("Extracted product details:", productDetails);
           setIsScanning(false);
           handleRedirect(productDetails);
           return true;
@@ -498,39 +538,8 @@ const QRScanner = () => {
   
         if (code) {
           try {
-            // Try parsing as JSON first
-            let productDetails;
-            try {
-              productDetails = JSON.parse(code.data);
-            } catch (jsonError) {
-              // If not JSON, try to parse as URL with parameters
-              if (code.data.includes('?') && code.data.includes('=')) {
-                const params = new URLSearchParams(code.data.split('?')[1]);
-                productDetails = {
-                  title: params.get('title'),
-                  artist: params.get('artist'),
-                  size: params.get('size') || '',
-                  medium: params.get('medium') || '',
-                  description: params.get('description') || '',
-                  yearCreated: params.get('yearCreated') || ''
-                };
-              } else {
-                // Simple format: might be title|artist|size|medium|yearCreated
-                const parts = code.data.split('|');
-                if (parts.length >= 2) {
-                  productDetails = {
-                    title: parts[0].trim(),
-                    artist: parts[1].trim(),
-                    size: parts[2] || '',
-                    medium: parts[3] || '',
-                    description: parts[4] || '',
-                    yearCreated: parts[5] || ''
-                  };
-                } else {
-                  throw new Error('Unrecognized QR code format');
-                }
-              }
-            }
+            // Extract the data using our helper function
+            const productDetails = extractDataFromQrCode(code.data);
             
             if (!productDetails.title || !productDetails.artist) {
               throw new Error('Missing required artwork details in QR code');

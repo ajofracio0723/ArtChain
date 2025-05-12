@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import { useRouter } from 'next/router';
-import { FaEthereum, FaCubes } from 'react-icons/fa';
-import { MdVerified } from 'react-icons/md';
+import { FaEthereum, FaCubes, FaQrcode, FaHistory } from 'react-icons/fa';
+import { MdVerified, MdSecurity } from 'react-icons/md';
 import { SiSolidity } from 'react-icons/si';
 import Image from 'next/image';
-import landingImage from '../public/images/1.png';
-import image2 from '../public/images/2.png';
-import image3 from '../public/images/3.png';
-import MoreContent from './MoreContent';
 import styles from '../styles/Home.module.css';
 
 const Home = () => {
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [activeProject, setActiveProject] = useState(null);
+  const [activeFeature, setActiveFeature] = useState(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -28,14 +24,29 @@ const Home = () => {
   };
 
   const handleLearnMoreClick = () => {
-    const moreContentSection = document.getElementById('moreContent');
-    moreContentSection.scrollIntoView({ behavior: 'smooth' });
+    const featuresSection = document.getElementById('features');
+    featuresSection.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const projects = [
-    { id: 1, title: "Authenticated Origin", image: landingImage, description: "Blockchain verification for authentic artwork provenance" },
-    { id: 2, title: "Digital Signatures", image: image2, description: "Cryptographically signed certificates of authenticity" },
-    { id: 3, title: "Ownership Registry", image: image3, description: "Transparent record of artwork ownership and transfers" },
+  const features = [
+    { 
+      id: 1, 
+      title: "Scan & Verify", 
+      icon: <FaQrcode className={styles.featureIcon} />,
+      description: "Instantly authenticate artwork with our QR scanning technology linked to blockchain records" 
+    },
+    { 
+      id: 2, 
+      title: "Provenance Tracking", 
+      icon: <FaHistory className={styles.featureIcon} />,
+      description: "View complete ownership history and transfer records secured on the blockchain" 
+    },
+    { 
+      id: 3, 
+      title: "Tamper-Proof Certificates", 
+      icon: <MdSecurity className={styles.featureIcon} />,
+      description: "Cryptographically secured certificates that cannot be forged or altered" 
+    },
   ];
 
   return (
@@ -69,36 +80,27 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Featured Works Section */}
-      <div className={styles.featuredSection}>
-        <h2 className={styles.sectionTitle}>Featured <span className={styles.highlightText}>Works</span></h2>
-        <div className={styles.gallery}>
-          {projects.map((project) => (
+      {/* Features Section */}
+      <div id="features" className={styles.featuresSection}>
+        <h2 className={styles.sectionTitle}>Our <span className={styles.highlightText}>Services</span></h2>
+        <div className={styles.featuresGrid}>
+          {features.map((feature) => (
             <div 
-              key={project.id}
-              className={`${styles.galleryItem} ${activeProject === project.id ? styles.activeGalleryItem : ''}`}
-              onMouseEnter={() => setActiveProject(project.id)}
-              onMouseLeave={() => setActiveProject(null)}
+              key={feature.id}
+              className={`${styles.featureCard} ${activeFeature === feature.id ? styles.activeFeatureCard : ''}`}
+              onMouseEnter={() => setActiveFeature(feature.id)}
+              onMouseLeave={() => setActiveFeature(null)}
             >
-              <div className={styles.imageContainer}>
-                <Image 
-                  src={project.image} 
-                  alt={project.title} 
-                  className={styles.galleryImage}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  style={{ objectFit: 'cover' }}
-                />
-                <div className={styles.imageOverlay}>
-                  <div className={styles.verifiedBadge}>
-                    <MdVerified style={{color: '#4cff4c', marginRight: '5px'}} />
-                    Verified
-                  </div>
-                </div>
+              <div className={styles.featureIconContainer}>
+                {feature.icon}
               </div>
-              <div className={styles.galleryItemContent}>
-                <h3 className={styles.galleryItemTitle}>{project.title}</h3>
-                <p className={styles.galleryItemDesc}>{project.description}</p>
+              <h3 className={styles.featureTitle}>{feature.title}</h3>
+              <p className={styles.featureDescription}>{feature.description}</p>
+              <div className={styles.featureOverlay}>
+                <div className={styles.featureBadge}>
+                  <MdVerified style={{color: '#4cff4c', marginRight: '5px'}} />
+                  Blockchain Secured
+                </div>
               </div>
             </div>
           ))}
@@ -107,7 +109,7 @@ const Home = () => {
 
       {/* Technology Section */}
       <div className={styles.techSection}>
-        <h2 className={styles.sectionTitle}>Powered by <span className={styles.highlightText}>Blockchain</span></h2>
+        <h2 className={styles.sectionTitle}>Powered by <span className={styles.highlightText}>Authentithief</span></h2>
         <div className={styles.techIcons}>
           <div className={styles.techItem}>
             <FaEthereum className={styles.techIcon} />
@@ -145,10 +147,6 @@ const Home = () => {
           © {new Date().getFullYear()} ArtChain. All rights reserved.
         </div>
       </footer>
-      
-      <div id="moreContent">
-        <MoreContent />
-      </div>
     </div>
   );
 };

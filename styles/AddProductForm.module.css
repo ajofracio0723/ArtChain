@@ -2,7 +2,19 @@
 
 /* Add these styles to your AddProductForm.module.css file */
 
-/* Add these styles to your AddProductForm.module.css file */
+.qrContainer {
+  margin-top: 2rem;
+  width: 100%;
+}
+
+.qrContentWrapper {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+}
 
 .fileUploadContainer {
   position: relative;
