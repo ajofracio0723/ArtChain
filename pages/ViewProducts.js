@@ -117,9 +117,9 @@ const contractABI = [
   }
 ];
 
-const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
-const EXPECTED_NETWORK_ID = '11155111'; // Ethereum Sepolia Network ID
-const EXPECTED_NETWORK_NAME = 'Sepolia Test Network';
+const contractAddress = '0xbb7feee0219ea8b001d541dafa8acfeb252ee72e';
+const EXPECTED_NETWORK_ID = '10'; // Ethereum Sepolia Network ID
+const EXPECTED_NETWORK_NAME = 'OP Mainnet';
 
 const ViewProducts = () => {
   const [products, setProducts] = useState([]);
@@ -178,8 +178,8 @@ const ViewProducts = () => {
                     symbol: 'ETH',
                     decimals: 18
                   },
-                  rpcUrls: ['https://sepolia.infura.io/v3/'],
-                  blockExplorerUrls: ['https://sepolia.etherscan.io']
+                  rpcUrls: ['https://mainnet.optimism.io'],
+                  blockExplorerUrls: ['https://optimistic.etherscan.io']
                 },
               ],
             });
@@ -547,7 +547,7 @@ const ViewProducts = () => {
               className={styles.primaryButton}
               onClick={handleSwitchNetwork}
             >
-              Switch to Sepolia Network
+              Switch to OP Mainnet Network
             </button>
           </div>
         ) : filteredProducts.length > 0 ? (

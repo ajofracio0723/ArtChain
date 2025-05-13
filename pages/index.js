@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import { useRouter } from 'next/router';
-import { FaEthereum, FaCubes, FaQrcode, FaHistory } from 'react-icons/fa';
+import { FaEthereum, FaCubes, FaQrcode, FaHistory, FaBars, FaTimes } from 'react-icons/fa';
 import { MdVerified, MdSecurity } from 'react-icons/md';
 import { SiSolidity } from 'react-icons/si';
 import Image from 'next/image';
@@ -11,13 +11,27 @@ const Home = () => {
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const [activeFeature, setActiveFeature] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoaded(true);
     }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    
+    // Add event listener for window resize
+    const handleResize = () => {
+      if (window.innerWidth > 768 && menuOpen) {
+        setMenuOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [menuOpen]);
 
   const handleQRScannerClick = () => {
     router.push('/qrscanner');
@@ -26,6 +40,10 @@ const Home = () => {
   const handleLearnMoreClick = () => {
     const featuresSection = document.getElementById('features');
     featuresSection.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
   };
 
   const features = [
@@ -51,7 +69,35 @@ const Home = () => {
 
   return (
     <div className={styles.container}>
-      <Header />
+      <div className={styles.headerWrapper}>
+        <Header />
+        
+        {/* Mobile Menu Button */}
+        <div className={styles.mobileMenuButton} onClick={toggleMenu}>
+          {menuOpen ? <FaTimes /> : <FaBars />}
+        </div>
+        
+        {/* Mobile Navigation */}
+        {menuOpen && (
+          <div className={styles.mobileNavOverlay}>
+            <div className={styles.mobileNavigation}>
+              <div className={styles.mobileNavLinks}>
+                <a href="#" className={styles.mobileNavLink}>About</a>
+                <a href="#" className={styles.mobileNavLink}>Gallery</a>
+                <a href="#" className={styles.mobileNavLink}>Artists</a>
+                <a href="#" className={styles.mobileNavLink}>Contact</a>
+              </div>
+              <button 
+                onClick={handleQRScannerClick}
+                className={styles.mobilePrimaryButton}
+              >
+                Authenticate Artwork
+                <MdVerified className={styles.buttonIcon} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       
       {/* Hero Section */}
       <div className={styles.heroSection}>

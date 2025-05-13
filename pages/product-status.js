@@ -45,7 +45,6 @@ const ProductStatus = () => {
       medium, 
       description, 
       yearCreated, 
-      owner, 
       isAuthentic, 
       productIndex 
     } = router.query;
@@ -58,7 +57,6 @@ const ProductStatus = () => {
         medium: medium || 'Unknown',
         description: description || '',
         yearCreated: yearCreated || 'Unknown',
-        owner: owner || 'Unknown'
       };
       
       setArtworkData(artwork);
@@ -143,7 +141,7 @@ const ProductStatus = () => {
   const formatErrorMessage = (message) => {
     // Common blockchain error patterns
     if (message.includes('not found') || message.includes('not registered')) {
-      return 'This artwork is not registered in our blockchain Network.';
+      return 'Verification for this artwork is currently unavailable.';
     }
     
     if (message.includes('connection') || message.includes('network')) {
@@ -193,9 +191,17 @@ const ProductStatus = () => {
                     <p className={styles.artworkArtist}>by {artworkData?.artist}</p>
                     
                     <div className={styles.detailsGrid}>
-                      <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Size</span>
-                        <span className={styles.detailValue}>{artworkData?.size}</span>
+                      <div className={styles.detailRow}>
+                        <div className={styles.detailItem}>
+                          <span className={styles.detailLabel}>Size</span>
+                          <span className={styles.detailValue}>{artworkData?.size}</span>
+                        </div>
+                        {artworkData?.yearCreated && (
+                          <div className={styles.detailItem}>
+                            <span className={styles.detailLabel}>Year</span>
+                            <span className={styles.detailValue}>{artworkData?.yearCreated}</span>
+                          </div>
+                        )}
                       </div>
                       {artworkData?.medium && (
                         <div className={styles.detailItem}>
@@ -203,17 +209,6 @@ const ProductStatus = () => {
                           <span className={styles.detailValue}>{artworkData?.medium}</span>
                         </div>
                       )}
-                      {artworkData?.yearCreated && (
-                        <div className={styles.detailItem}>
-                          <span className={styles.detailLabel}>Year</span>
-                          <span className={styles.detailValue}>{artworkData?.yearCreated}</span>
-                        </div>
-                      )}
-                      <div className={styles.detailItem}>
-                        <span className={styles.detailLabel}>Owner</span>
-                        <span className={styles.detailValue}>{truncateAddress(artworkData?.owner)}</span>
-                      </div>
-                    
                     </div>
                     
                     {artworkData?.description && (
@@ -253,7 +248,7 @@ const ProductStatus = () => {
                     It may be not authentic, the QR code may be damaged, the image scanned or uploaded is not clear, or there might be a network issue.
                       </p>
                       <p className={styles.errorHelp}>
-                    TPLEASE TRY SCANNING AGAIN. 
+                      PLEASE TRY SCANNING AGAIN. 
                   </p>
                 </div>
               </div>

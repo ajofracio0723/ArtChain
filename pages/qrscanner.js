@@ -10,7 +10,7 @@ import { CheckCircle } from 'lucide-react';
 import jsQR from 'jsqr';
 import styles from '../styles/QRScanner.module.css';
 
-// Updated Contract ABI to match your new ProductRegistry contract
+// Updated Contract ABI to match your ProductRegistry contract
 const contractABI = [
   {
     inputs: [
@@ -138,8 +138,11 @@ const contractABI = [
   }
 ];
 
-const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
-const RPC_URL = 'https://sepolia.infura.io/v3/0b71ad43bec649f691d94324ae744684';
+// Update with your contract address on OP Mainnet
+const contractAddress = '0xbb7feee0219ea8b001d541dafa8acfeb252ee72e';
+
+// Update to use a public Optimism RPC endpoint
+const RPC_URL = 'https://mainnet.optimism.io';
 
 // List of websites that might be in the QR code URLs
 const QR_BASE_URL_PREFIXES = [
@@ -163,7 +166,7 @@ const QRScanner = () => {
   const isProcessingRef = useRef(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [accounts, setAccounts] = useState([]);
+  const [networkName, setNetworkName] = useState('Optimism Mainnet');
 
   // Loading effect similar to Home.js
   useEffect(() => {
@@ -203,8 +206,23 @@ const QRScanner = () => {
     const checkConnection = async () => {
       if (web3) {
         try {
-          await web3.eth.net.isListening();
+          // Use a more reliable method than isListening()
+          await web3.eth.getBlockNumber();
           setNetworkError(false);
+          
+          // Check which network we're connected to
+          try {
+            const chainId = await web3.eth.getChainId();
+            // Optimism Mainnet has chainId 10
+            if (chainId === 10) {
+              setNetworkName('Optimism Mainnet');
+            } else {
+              console.warn(`Connected to chain ID ${chainId}, expected Optimism Mainnet (10)`);
+              setNetworkName(`Unknown Network (${chainId})`);
+            }
+          } catch (chainError) {
+            console.error('Error getting chain ID:', chainError);
+          }
         } catch (error) {
           setNetworkError(true);
           console.error('Blockchain connection error:', error);
@@ -212,9 +230,9 @@ const QRScanner = () => {
       }
     };
     
-    // Check connection immediately and then every 10 seconds
+    // Check connection immediately and then every 30 seconds (reduced frequency)
     checkConnection();
-    intervalId = setInterval(checkConnection, 10000);
+    intervalId = setInterval(checkConnection, 30000);
     
     return () => {
       if (intervalId) clearInterval(intervalId);
@@ -225,7 +243,16 @@ const QRScanner = () => {
   useEffect(() => {
     const initWeb3 = async () => {
       try {
-        const web3Instance = new Web3(new Web3.providers.HttpProvider(RPC_URL));
+        // Connect to Optimism Mainnet with specific options
+        const web3Instance = new Web3(new Web3.providers.HttpProvider(RPC_URL, {
+          timeout: 10000, // 10 seconds
+          headers: [
+            {
+              name: 'Content-Type',
+              value: 'application/json'
+            }
+          ]
+        }));
         setWeb3(web3Instance);
 
         const contractInstance = new web3Instance.eth.Contract(
@@ -235,15 +262,15 @@ const QRScanner = () => {
         setContract(contractInstance);
 
         try {
-          // Test connection by getting block number
-          await web3Instance.eth.getBlockNumber();
+          // Only use getBlockNumber() as it's more commonly whitelisted
+          const blockNumber = await web3Instance.eth.getBlockNumber();
+          console.log(`Connected to Optimism, current block: ${blockNumber}`);
           
-          // Get accounts for later use
-          const accts = await web3Instance.eth.getAccounts();
-          setAccounts(accts);
+          // Skip getAccounts() as it may not be whitelisted
+          // Skip getChainId() direct call to avoid potential RPC errors
           
         } catch (connectionError) {
-          throw new Error(`Failed to connect to blockchain: ${connectionError.message}`);
+          throw new Error(`Failed to connect to Optimism blockchain: ${connectionError.message}`);
         }
 
       } catch (error) {
@@ -677,7 +704,7 @@ const QRScanner = () => {
         <div className={styles.scannerContent}>
           <h1 className={styles.scannerTitle}>
             <span className={styles.scannerTitleHighlight}>Art</span>Chain
-            <span className={styles.scannerSubtitle}>Authenticator</span>
+            <span className={styles.scannerSubtitle}>Scan the QR here again</span>
           </h1>
           
           <div className={styles.scannerContainer}>

@@ -84,7 +84,7 @@ const contractABI = [
   }
 ];
 
-const contractAddress = '0x99156b9128af758848e8eb70b4fda342566c06b3';
+const contractAddress = '0xbb7feee0219ea8b001d541dafa8acfeb252ee72e';
 
 // Helper function to safely serialize BigInt values
 const safeSerialize = (obj) => {
@@ -103,6 +103,9 @@ const safeSerialize = (obj) => {
 
 // The base URL for the QR Scanner page - updated to use the provided URL
 const QR_SCANNER_BASE_URL = "https://art-chain.vercel.app/";
+
+// Define the maximum file size in bytes (800KB = 800 * 1024 bytes)
+const MAX_FILE_SIZE = 800 * 1024;
 
 const AddProductForm = () => {
   const [productName, setProductName] = useState('');
@@ -203,6 +206,17 @@ const AddProductForm = () => {
     };
   }, []);
 
+  // Helper function to convert KB to a readable format
+  const formatFileSize = (sizeInBytes) => {
+    if (sizeInBytes < 1024) {
+      return `${sizeInBytes} B`;
+    } else if (sizeInBytes < 1024 * 1024) {
+      return `${(sizeInBytes / 1024).toFixed(2)} KB`;
+    } else {
+      return `${(sizeInBytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+  };
+
   // Handle image file selection
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -221,9 +235,9 @@ const AddProductForm = () => {
       return;
     }
     
-    // Validate file size (limiting to 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setImageUploadError('Image size should be less than 5MB');
+    // Validate file size (limiting to 800KB)
+    if (file.size > MAX_FILE_SIZE) {
+      setImageUploadError(`Image size should be less than 800KB. Your file is ${formatFileSize(file.size)}.`);
       return;
     }
     
@@ -582,7 +596,7 @@ const AddProductForm = () => {
                 />
               </div>
               
-              {/* New Image Upload Field */}
+              {/* Image Upload Field with 800KB limit */}
               <div className={styles.formGroup}>
                 <label htmlFor="artworkImage" className={styles.formLabel}>
                   Artwork Image <span className={styles.optionalText}>(optional)</span>
@@ -617,7 +631,7 @@ const AddProductForm = () => {
                 )}
                 
                 <p className={styles.formHelper}>
-                  Image will be stored in database, not on blockchain
+                  Image will be stored in database, not on blockchain. Maximum size: 800KB.
                 </p>
               </div>
               
