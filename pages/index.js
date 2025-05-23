@@ -71,32 +71,7 @@ const Home = () => {
     <div className={styles.container}>
       <div className={styles.headerWrapper}>
         <Header />
-        
-        {/* Mobile Menu Button */}
-        <div className={styles.mobileMenuButton} onClick={toggleMenu}>
-          {menuOpen ? <FaTimes /> : <FaBars />}
-        </div>
-        
-        {/* Mobile Navigation */}
-        {menuOpen && (
-          <div className={styles.mobileNavOverlay}>
-            <div className={styles.mobileNavigation}>
-              <div className={styles.mobileNavLinks}>
-                <a href="#" className={styles.mobileNavLink}>About</a>
-                <a href="#" className={styles.mobileNavLink}>Gallery</a>
-                <a href="#" className={styles.mobileNavLink}>Artists</a>
-                <a href="#" className={styles.mobileNavLink}>Contact</a>
-              </div>
-              <button 
-                onClick={handleQRScannerClick}
-                className={styles.mobilePrimaryButton}
-              >
-                Authenticate Artwork
-                <MdVerified className={styles.buttonIcon} />
-              </button>
-            </div>
-          </div>
-        )}
+      
       </div>
       
       {/* Hero Section */}

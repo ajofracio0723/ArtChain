@@ -44,7 +44,7 @@ const Header = () => {
               gap: '20px',
             }}
           >
-            <li><a href="/Manufacturer" style={navLinkStyle}>Home</a></li>
+            <li><a href="/Artist" style={navLinkStyle}>Home</a></li>
             <li><a href="/about" style={navLinkStyle}>About Us</a></li>
          
           </ul>

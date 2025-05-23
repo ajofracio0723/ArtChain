@@ -1,90 +1,28 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header2';
-import { FaDownload, FaUpload } from 'react-icons/fa';
-import { MdVerified } from 'react-icons/md';
-import Web3 from 'web3';
-import QRCode from 'qrcode';
+import { FaUpload } from 'react-icons/fa';
+import QRCodeCertificate from '../components/QRCodeCertificate';
+import WalletManager from './WalletManager';
 import styles from '../styles/AddProductForm.module.css';
 
-// Updated ABI to match the contract structure
-const contractABI = [
-  {
-    inputs: [
-      { internalType: "string", name: "_title", type: "string" },
-      { internalType: "string", name: "_description", type: "string" },
-      { internalType: "string", name: "_artist", type: "string" },
-      { internalType: "string", name: "_size", type: "string" },
-      { internalType: "string", name: "_medium", type: "string" },
-      { internalType: "uint16", name: "_yearCreated", type: "uint16" }
-    ],
-    name: "addProduct",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function"
-  },
-  {
-    inputs: [],
-    name: "getTotalProducts",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function"
-  },
-  {
-    inputs: [{ internalType: "address", name: "_owner", type: "address" }],
-    name: "getProductsByOwner",
-    outputs: [
-      {
-        components: [
-          { internalType: "string", name: "title", type: "string" },
-          { internalType: "string", name: "description", type: "string" },
-          { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "medium", type: "string" },
-          { internalType: "uint16", name: "yearCreated", type: "uint16" },
-          { internalType: "address", name: "owner", type: "address" },
-          { internalType: "bool", name: "exists", type: "bool" }
-        ],
-        internalType: "struct ProductRegistry.Product[]",
-        name: "",
-        type: "tuple[]"
-      }
-    ],
-    stateMutability: "view",
-    type: "function"
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "_productId", type: "uint256" }],
-    name: "getProductById",
-    outputs: [
-      {
-        components: [
-          { internalType: "string", name: "title", type: "string" },
-          { internalType: "string", name: "description", type: "string" },
-          { internalType: "string", name: "artist", type: "string" },
-          { internalType: "string", name: "size", type: "string" },
-          { internalType: "string", name: "medium", type: "string" },
-          { internalType: "uint16", name: "yearCreated", type: "uint16" },
-          { internalType: "address", name: "owner", type: "address" },
-          { internalType: "bool", name: "exists", type: "bool" }
-        ],
-        internalType: "struct ProductRegistry.Product",
-        name: "",
-        type: "tuple"
-      }
-    ],
-    stateMutability: "view",
-    type: "function"
-  },
-  {
-    inputs: [],
-    name: "productCount",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function"
-  }
-];
+// The base URL for the QR Scanner page
+const QR_SCANNER_BASE_URL = "https://art-chain.vercel.app/";
 
-const contractAddress = '0xbb7feee0219ea8b001d541dafa8acfeb252ee72e';
+// Define the maximum file size in bytes (800KB = 800 * 1024 bytes)
+const MAX_FILE_SIZE = 800 * 1024;
+
+// OP Mainnet Network Configuration
+const OP_MAINNET = {
+  chainId: '0xA', // Chain ID for OP Mainnet in hex (decimal: 10)
+  chainName: 'OP Mainnet',
+  nativeCurrency: {
+    name: 'Ethereum',
+    symbol: 'ETH',
+    decimals: 18
+  },
+  rpcUrls: ['https://mainnet.optimism.io'],
+  blockExplorerUrls: ['https://optimistic.etherscan.io']
+};
 
 // Helper function to safely serialize BigInt values
 const safeSerialize = (obj) => {
@@ -101,12 +39,6 @@ const safeSerialize = (obj) => {
   });
 };
 
-// The base URL for the QR Scanner page - updated to use the provided URL
-const QR_SCANNER_BASE_URL = "https://art-chain.vercel.app/";
-
-// Define the maximum file size in bytes (800KB = 800 * 1024 bytes)
-const MAX_FILE_SIZE = 800 * 1024;
-
 const AddProductForm = () => {
   const [productName, setProductName] = useState('');
   const [description, setDescription] = useState('');
@@ -117,94 +49,76 @@ const AddProductForm = () => {
   const [registeredDateTime, setRegisteredDateTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [qrCodeData, setQRCodeData] = useState('');
-  const [qrCodeUrl, setQRCodeUrl] = useState('');
-  const [scanUrl, setScanUrl] = useState(''); // New state for scannable URL
+  const [scanUrl, setScanUrl] = useState('');
+  const [registrationFee, setRegistrationFee] = useState(0.000001);
+  const [productId, setProductId] = useState(null);
+  
+  // Wallet connection states
   const [web3, setWeb3] = useState(null);
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState('');
-  const [registrationFee, setRegistrationFee] = useState(0.000001);
   const [networkId, setNetworkId] = useState(null);
-  const [productId, setProductId] = useState(null);
-  const canvasRef = useRef(null);
+  const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
+  const [networkSwitchInProgress, setNetworkSwitchInProgress] = useState(false);
   
-  // New state for image upload
+  // Image upload state
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState('');
   const [imageName, setImageName] = useState('');
 
+  // Check if connected to the correct network
   useEffect(() => {
-    if (scanUrl && canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, scanUrl, {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        scale: 8,
-        color: {
-          dark: '#000000',
-          light: '#ffffff'
-        }
-      }, (error) => {
-        if (error) console.error(error);
-      });
-
-      QRCode.toDataURL(scanUrl, {
-        errorCorrectionLevel: 'M',
-        margin: 1,
-        scale: 8
-      }, (err, url) => {
-        if (err) console.error(err);
-        setQRCodeUrl(url);
-      });
+    if (networkId) {
+      // OP Mainnet has chainId 10
+      setIsCorrectNetwork(networkId === 10);
     }
-  }, [scanUrl]);
+  }, [networkId]);
 
-  useEffect(() => {
-    const initWeb3 = async () => {
-      if (window.ethereum) {
-        const web3Instance = new Web3(window.ethereum);
+  // Handler for wallet connection
+  const handleWalletConnected = ({ web3, contract, account, networkId }) => {
+    setWeb3(web3);
+    setContract(contract);
+    setAccount(account);
+    setNetworkId(networkId);
+  };
+
+  // Function to switch network to OP Mainnet
+  const switchToOpMainnet = async () => {
+    if (!window.ethereum || !web3) {
+      alert('MetaMask is not installed. Please install MetaMask to use this feature.');
+      return;
+    }
+
+    setNetworkSwitchInProgress(true);
+    
+    try {
+      // First try to switch to OP Mainnet
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: OP_MAINNET.chainId }],
+      });
+    } catch (switchError) {
+      // If the network doesn't exist in MetaMask, add it
+      if (switchError.code === 4902) {
         try {
-          const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [OP_MAINNET],
           });
-          
-          const networkId = await web3Instance.eth.net.getId();
-          setNetworkId(Number(networkId));
-          
-          setWeb3(web3Instance);
-          setAccount(accounts[0]);
-
-          window.ethereum.on('accountsChanged', (newAccounts) => {
-            setAccount(newAccounts[0]);
-          });
-          
-          window.ethereum.on('chainChanged', (chainId) => {
-            window.location.reload();
-          });
-
-          const contractInstance = new web3Instance.eth.Contract(contractABI, contractAddress);
-          setContract(contractInstance);
-        } catch (error) {
-          console.error("Web3 initialization failed", error);
-          if (error.code === 4001) {
-            alert("Please connect your MetaMask wallet to use this application");
-          } else {
-            alert("Error connecting to MetaMask. Please check the console for details.");
-          }
+        } catch (addError) {
+          console.error('Error adding OP Mainnet network to MetaMask:', addError);
+          alert('Failed to add OP Mainnet to MetaMask. Please add it manually.');
         }
       } else {
-        alert('Non-Ethereum browser detected. Please install MetaMask!');
+        console.error('Error switching to OP Mainnet:', switchError);
+        alert('Failed to switch network. Please manually switch to OP Mainnet in MetaMask.');
       }
-    };
-    initWeb3();
-
-    return () => {
-      if (window.ethereum && window.ethereum.removeListener) {
-        window.ethereum.removeListener('accountsChanged', () => {});
-        window.ethereum.removeListener('chainChanged', () => {});
-      }
-    };
-  }, []);
+    } finally {
+      setNetworkSwitchInProgress(false);
+    }
+  };
 
   // Helper function to convert KB to a readable format
   const formatFileSize = (sizeInBytes) => {
@@ -345,12 +259,22 @@ const AddProductForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!account) {
+      alert('Please connect your MetaMask wallet first.');
+      return;
+    }
+    
+    if (!isCorrectNetwork) {
+      alert('Please switch to OP Mainnet network before registering artwork.');
+      return;
+    }
+    
     if (!productName || !description || !artistName || !size || !medium || !yearCreated) {
       alert('Please fill in all required fields');
       return;
     }
 
-    if (!web3 || !contract || !account) {
+    if (!web3 || !contract) {
       alert('Web3 connection not established. Please make sure MetaMask is connected.');
       return;
     }
@@ -474,289 +398,221 @@ const AddProductForm = () => {
     return `${month}/${day}/${year}, ${hours}:${minutes} ${ampm}`;
   };
 
-  const downloadQRCode = () => {
-    if (qrCodeUrl) {
-      const link = document.createElement('a');
-      link.href = qrCodeUrl;
-      const qrDataObj = JSON.parse(qrCodeData);
-      link.download = `${qrDataObj.title || 'ArtCertificate'}.png`;
-      link.click();
+  // Render network warning banner if not on correct network
+  const renderNetworkWarning = () => {
+    if (!account) return null;
+    
+    if (!isCorrectNetwork) {
+      return (
+        <div className={styles.networkWarning}>
+          <p>
+            <strong>Warning:</strong> You are not connected to OP Mainnet. 
+            This application requires OP Mainnet (Optimism) network.
+          </p>
+          <button 
+            onClick={switchToOpMainnet} 
+            className={styles.switchNetworkButton}
+            disabled={networkSwitchInProgress}
+          >
+            {networkSwitchInProgress ? 'Switching...' : 'Switch to OP Mainnet'}
+          </button>
+        </div>
+      );
     }
+    
+    return null;
   };
 
-  // Helper function to safely parse QR code data
-  const safeParseQrData = () => {
-    try {
-      return qrCodeData ? JSON.parse(qrCodeData) : null;
-    } catch (error) {
-      console.error("Error parsing QR data:", error);
-      return null;
-    }
-  };
+  // Render the form
+  const renderForm = () => {
+    return (
+      <div className={styles.formSection}>
+        <div className={styles.card}>
+          {renderNetworkWarning()}
+          
+          <form onSubmit={handleSubmit}>
+            <div className={styles.formGroup}>
+              <label htmlFor="productName" className={styles.formLabel}>Artwork Title</label>
+              <input 
+                type="text" 
+                id="productName" 
+                value={productName} 
+                onChange={(e) => setProductName(e.target.value)} 
+                className={styles.formInput} 
+                placeholder="Enter artwork title"
+                required
+              />
+            </div>
 
-  const qrDataObj = safeParseQrData();
+            <div className={styles.formGroup}>
+              <label htmlFor="description" className={styles.formLabel}>Artwork Description</label>
+              <textarea 
+                id="description" 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                className={styles.formInput} 
+                placeholder="Describe the artwork"
+                rows="3"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="artistName" className={styles.formLabel}>Artist Name</label>
+              <input 
+                type="text" 
+                id="artistName" 
+                value={artistName} 
+                onChange={(e) => setArtistName(e.target.value)} 
+                className={styles.formInput} 
+                placeholder="Enter artist name"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="size" className={styles.formLabel}>Artwork Size</label>
+              <input 
+                type="text" 
+                id="size" 
+                value={size} 
+                onChange={(e) => setSize(e.target.value)} 
+                className={styles.formInput} 
+                placeholder="e.g., 24x36 inches, 60x90 cm"
+                required
+              />
+            </div>
+            
+            <div className={styles.formGroup}>
+              <label htmlFor="medium" className={styles.formLabel}>Medium</label>
+              <input 
+                type="text" 
+                id="medium" 
+                value={medium} 
+                onChange={(e) => setMedium(e.target.value)} 
+                className={styles.formInput} 
+                placeholder="e.g., Oil on canvas, Acrylic, Digital"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label htmlFor="yearCreated" className={styles.formLabel}>Year Created</label>
+              <input 
+                type="number" 
+                id="yearCreated" 
+                value={yearCreated} 
+                onChange={(e) => setYearCreated(e.target.value)} 
+                className={styles.formInput} 
+                min="1000"
+                max={new Date().getFullYear()}
+                required
+              />
+            </div>
+            
+            {/* Image Upload Field with 800KB limit */}
+            <div className={styles.formGroup}>
+              <label htmlFor="artworkImage" className={styles.formLabel}>
+                Artwork Image <span className={styles.optionalText}>(optional)</span>
+              </label>
+              
+              <div className={styles.fileUploadContainer}>
+                <input
+                  type="file"
+                  id="artworkImage"
+                  onChange={handleImageChange}
+                  className={styles.fileInput}
+                  accept="image/*"
+                />
+                <label htmlFor="artworkImage" className={styles.fileInputLabel}>
+                  <FaUpload className={styles.uploadIcon} />
+                  {imageName || 'Choose Image'}
+                </label>
+              </div>
+              
+              {imageUploadError && (
+                <p className={styles.errorText}>{imageUploadError}</p>
+              )}
+              
+              {imagePreview && (
+                <div className={styles.imagePreviewContainer}>
+                  <img 
+                    src={imagePreview} 
+                    alt="Artwork preview" 
+                    className={styles.imagePreview} 
+                  />
+                </div>
+              )}
+              
+              <p className={styles.formHelper}>
+                Image will be stored in database, not on blockchain. Maximum size: 800KB.
+              </p>
+            </div>
+            
+            <div className={styles.formGroup}>
+              <label htmlFor="registrationFee" className={styles.formLabel}>Registration Fee (ETH)</label>
+              <input 
+                type="number" 
+                step="0.000001" 
+                id="registrationFee" 
+                value={registrationFee} 
+                onChange={(e) => setRegistrationFee(parseFloat(e.target.value) || 0)} 
+                className={styles.formInput} 
+              />
+              <p className={styles.formHelper}>Fee paid to register artwork on blockchain</p>
+            </div>
+            
+            {registeredDateTime && (
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Date & Time Registered</label>
+                <input 
+                  type="text" 
+                  value={registeredDateTime} 
+                  readOnly 
+                  className={`${styles.formInput} ${styles.readonlyInput}`} 
+                />
+              </div>
+            )}
+            
+            <div className={styles.buttonContainer}>
+              <button 
+                type="submit" 
+                className={styles.primaryButton} 
+                disabled={isSubmitting || uploadingImage || !account || !contract || !isCorrectNetwork}
+              >
+                {isSubmitting || uploadingImage ? 'Processing...' : 'Register Artwork'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className={styles.container}>
       <Header />
       
+      {/* WalletManager component to handle wallet connection */}
+      <WalletManager onWalletConnected={handleWalletConnected} />
+      
       {account && (
-        <div className={styles.walletAddress}>
-          <MdVerified className={styles.verifiedIcon} />
-          Connected Wallet: {account.substring(0, 6)}...{account.substring(account.length - 4)}
-          {networkId && <span className={styles.networkBadge}>Network ID: {networkId}</span>}
+        <div className={styles.formContainer}>
+          <h1 className={styles.sectionTitle}>
+            Register <span className={styles.highlightText}>Artwork</span>
+          </h1>
+          
+          {/* Form Section - Full Width */}
+          {renderForm()}
         </div>
       )}
       
-      <div className={styles.formContainer}>
-        <h1 className={styles.sectionTitle}>
-          Register <span className={styles.highlightText}>Artwork</span>
-        </h1>
-        
-        {/* Form Section - Full Width */}
-        <div className={styles.formSection}>
-          <div className={styles.card}>
-            <form onSubmit={handleSubmit}>
-              <div className={styles.formGroup}>
-                <label htmlFor="productName" className={styles.formLabel}>Artwork Title</label>
-                <input 
-                  type="text" 
-                  id="productName" 
-                  value={productName} 
-                  onChange={(e) => setProductName(e.target.value)} 
-                  className={styles.formInput} 
-                  placeholder="Enter artwork title"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="description" className={styles.formLabel}>Artwork Description</label>
-                <textarea 
-                  id="description" 
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)} 
-                  className={styles.formInput} 
-                  placeholder="Describe the artwork"
-                  rows="3"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="artistName" className={styles.formLabel}>Artist Name</label>
-                <input 
-                  type="text" 
-                  id="artistName" 
-                  value={artistName} 
-                  onChange={(e) => setArtistName(e.target.value)} 
-                  className={styles.formInput} 
-                  placeholder="Enter artist name"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="size" className={styles.formLabel}>Artwork Size</label>
-                <input 
-                  type="text" 
-                  id="size" 
-                  value={size} 
-                  onChange={(e) => setSize(e.target.value)} 
-                  className={styles.formInput} 
-                  placeholder="e.g., 24x36 inches, 60x90 cm"
-                  required
-                />
-              </div>
-              
-              <div className={styles.formGroup}>
-                <label htmlFor="medium" className={styles.formLabel}>Medium</label>
-                <input 
-                  type="text" 
-                  id="medium" 
-                  value={medium} 
-                  onChange={(e) => setMedium(e.target.value)} 
-                  className={styles.formInput} 
-                  placeholder="e.g., Oil on canvas, Acrylic, Digital"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="yearCreated" className={styles.formLabel}>Year Created</label>
-                <input 
-                  type="number" 
-                  id="yearCreated" 
-                  value={yearCreated} 
-                  onChange={(e) => setYearCreated(e.target.value)} 
-                  className={styles.formInput} 
-                  min="1000"
-                  max={new Date().getFullYear()}
-                  required
-                />
-              </div>
-              
-              {/* Image Upload Field with 800KB limit */}
-              <div className={styles.formGroup}>
-                <label htmlFor="artworkImage" className={styles.formLabel}>
-                  Artwork Image <span className={styles.optionalText}>(optional)</span>
-                </label>
-                
-                <div className={styles.fileUploadContainer}>
-                  <input
-                    type="file"
-                    id="artworkImage"
-                    onChange={handleImageChange}
-                    className={styles.fileInput}
-                    accept="image/*"
-                  />
-                  <label htmlFor="artworkImage" className={styles.fileInputLabel}>
-                    <FaUpload className={styles.uploadIcon} />
-                    {imageName || 'Choose Image'}
-                  </label>
-                </div>
-                
-                {imageUploadError && (
-                  <p className={styles.errorText}>{imageUploadError}</p>
-                )}
-                
-                {imagePreview && (
-                  <div className={styles.imagePreviewContainer}>
-                    <img 
-                      src={imagePreview} 
-                      alt="Artwork preview" 
-                      className={styles.imagePreview} 
-                    />
-                  </div>
-                )}
-                
-                <p className={styles.formHelper}>
-                  Image will be stored in database, not on blockchain. Maximum size: 800KB.
-                </p>
-              </div>
-              
-              <div className={styles.formGroup}>
-                <label htmlFor="registrationFee" className={styles.formLabel}>Registration Fee (ETH)</label>
-                <input 
-                  type="number" 
-                  step="0.000001" 
-                  id="registrationFee" 
-                  value={registrationFee} 
-                  onChange={(e) => setRegistrationFee(parseFloat(e.target.value) || 0)} 
-                  className={styles.formInput} 
-                />
-                <p className={styles.formHelper}>Fee paid to register artwork on blockchain</p>
-              </div>
-              
-              {registeredDateTime && (
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Date & Time Registered</label>
-                  <input 
-                    type="text" 
-                    value={registeredDateTime} 
-                    readOnly 
-                    className={`${styles.formInput} ${styles.readonlyInput}`} 
-                  />
-                </div>
-              )}
-              
-              <div className={styles.buttonContainer}>
-                <button 
-                  type="submit" 
-                  className={styles.primaryButton} 
-                  disabled={isSubmitting || uploadingImage || !account || !contract}
-                >
-                  {isSubmitting || uploadingImage ? 'Processing...' : 'Register Artwork'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      
-      {/* QR Code Section - Now Below the Form */}
-      {qrCodeData && qrDataObj && (
-        <div className={styles.qrContainer}>
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Authentication Certificate</h2>
-            
-            <div className={styles.qrContentWrapper}>
-              <div className={styles.qrCodeContainer}>
-                <canvas ref={canvasRef} className={styles.qrCanvas}></canvas>
-                <p className={styles.scanInstructions}>Scan with your phone camera</p>
-              </div>
-              
-              <div className={styles.qrDetails}>
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>ID:</span>
-                  <span className={styles.qrValue}>{qrDataObj.productId}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Title:</span>
-                  <span className={styles.qrValue}>{qrDataObj.title}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Description:</span>
-                  <span className={styles.qrValue}>
-                    {qrDataObj.description.length > 30 
-                      ? qrDataObj.description.substring(0, 30) + '...' 
-                      : qrDataObj.description}
-                  </span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Artist:</span>
-                  <span className={styles.qrValue}>{qrDataObj.artist}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Size:</span>
-                  <span className={styles.qrValue}>{qrDataObj.size}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Medium:</span>
-                  <span className={styles.qrValue}>{qrDataObj.medium}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Year Created:</span>
-                  <span className={styles.qrValue}>{qrDataObj.yearCreated}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Registered:</span>
-                  <span className={styles.qrValue}>{qrDataObj.registeredDate}</span>
-                </div>
-                
-                <div className={styles.qrInfoItem}>
-                  <span className={styles.qrLabel}>Transaction:</span>
-                  <span className={styles.qrValue}>
-                    {qrDataObj.transactionHash.substring(0, 10)}...
-                  </span>
-                </div>
-                
-                {qrDataObj.imageId && (
-                  <div className={styles.qrInfoItem}>
-                    <span className={styles.qrLabel}>Image Stored:</span>
-                    <span className={styles.qrValue}>
-                      <MdVerified className={styles.verifiedIconSmall} /> Yes
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <button 
-              className={styles.secondaryButton} 
-              onClick={downloadQRCode}
-            >
-              <FaDownload className={styles.buttonIcon} /> Download QR
-            </button>
-          </div>
-        </div>
+      {/* QR Code Certificate Component */}
+      {qrCodeData && (
+        <QRCodeCertificate 
+          qrCodeData={qrCodeData} 
+          scanUrl={scanUrl} 
+        />
       )}
     </div>
   );

@@ -11,6 +11,12 @@
   flex-direction: column;
   align-items: center;
 }
+.modalImageFullWidth {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
 
 .modalImage {
   width: 100%;
@@ -18,6 +24,12 @@
   object-fit: contain;
  
 }
+
+.modalDetailsStack {
+  width: 100%;
+}
+
+
 
 .imageNavigation {
   display: flex;

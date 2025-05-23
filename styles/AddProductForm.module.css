@@ -2,6 +2,231 @@
 
 /* Add these styles to your AddProductForm.module.css file */
 
+/* Add these styles to your existing styles/AddProductForm.module.css file */
+
+/* MetaMask Requirement Styles */
+.metamaskRequirement {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.metamaskCard {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.metamaskIconContainer {
+  margin-bottom: 24px;
+}
+
+.metamaskLogo {
+  width: 100px;
+  height: auto;
+}
+
+.metamaskTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #24292e;
+  margin-bottom: 16px;
+}
+
+.metamaskDescription {
+  font-size: 16px;
+  color: #6a737d;
+  margin-bottom: 24px;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.metamaskFeatures {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.metamaskFeature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #f6f8fa;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.metamaskFeature svg {
+  color: #e2761b; /* MetaMask orange */
+  flex-shrink: 0;
+}
+
+.metamaskInstallButton {
+  background-color: #e2761b; /* MetaMask orange */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.metamaskInstallButton:hover {
+  background-color: #c66218;
+}
+
+.metamaskNote {
+  font-size: 14px;
+  color: #6a737d;
+  font-style: italic;
+}
+
+/* Wallet Connection Styles */
+.walletConnection {
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.walletCard {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.walletIcon {
+  color: #e2761b;
+  margin-bottom: 24px;
+}
+
+.walletTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #24292e;
+  margin-bottom: 16px;
+}
+
+.walletDescription {
+  font-size: 16px;
+  color: #6a737d;
+  margin-bottom: 24px;
+  max-width: 500px;
+  line-height: 1.5;
+}
+
+.connectWalletButton {
+  background-color: #e2761b; /* MetaMask orange */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 28px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.connectWalletButton:hover {
+  background-color: #c66218;
+}
+
+.connectWalletButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Loading and Error Styles */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  gap: 16px;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(226, 118, 27, 0.3);
+  border-radius: 50%;
+  border-top-color: #e2761b;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.connectionError {
+  background-color: #fee2e2;
+  border-left: 4px solid #ef4444;
+  color: #b91c1c;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin: 20px auto;
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.errorIcon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+/* Enhanced Wallet Address Badge */
+.walletAddress {
+  display: flex;
+  align-items: center;
+  background-color: #f0f8ff;
+  border: 1px solid #c8e1ff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin: 20px auto;
+  max-width: 800px;
+  font-family: monospace;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.verifiedIcon {
+  color: #22c55e;
+  margin-right: 12px;
+  font-size: 20px;
+}
+
+.networkBadge {
+  margin-left: auto;
+  background-color: #e2761b;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .qrContainer {
   margin-top: 2rem;
   width: 100%;

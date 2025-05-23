@@ -233,7 +233,7 @@ const ViewProducts = () => {
           if (error.message.includes("User denied account authorization")) {
             alert("Please connect your MetaMask wallet to use this application");
           } else {
-            alert("Error connecting to blockchain. Please check your connection and try again.");
+            alert("Please check your connection and try again.");
           }
           setLoading(false);
         }
@@ -428,7 +428,7 @@ const ViewProducts = () => {
       <section className={styles.heroSection}>
         <div className={styles.heroContent}>
           <h1 className={styles.heroTitle}>
-            Art <span className={styles.heroTitleHighlight}>Registry</span>
+            Art <span className={styles.heroTitleHighlight}>Chain</span>
           </h1>
           <p className={styles.heroSubtitle}>
             Browse all registered artworks on the blockchain
@@ -473,7 +473,7 @@ const ViewProducts = () => {
               <input
                 type="text"
                 className={styles.searchInput}
-                placeholder="Search artworks..."
+                placeholder="Search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 disabled={networkError}

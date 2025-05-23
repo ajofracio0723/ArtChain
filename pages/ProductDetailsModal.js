@@ -37,7 +37,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose }) => {
   const renderImage = () => {
     if (hasImages) {
       return (
-        <div className={styles.modalImageContainer}>
+        <>
           <img 
             src={product.images[currentImageIndex].image} 
             alt={`${product.title} - ${currentImageIndex + 1}`}
@@ -57,7 +57,7 @@ const ProductDetailsModal = ({ product, isOpen, onClose }) => {
               </button>
             </div>
           )}
-        </div>
+        </>
       );
     } else {
       return (
@@ -80,38 +80,41 @@ const ProductDetailsModal = ({ product, isOpen, onClose }) => {
         </div>
         
         <div className={styles.modalBody}>
-          {renderImage()}
+          {/* Full-width image at the top */}
+          <div className={styles.modalImageFullWidth}>
+            {renderImage()}
+          </div>
           
-          <div className={styles.modalProductDetails}>
+          {/* All artwork details stacked below the image */}
+          <div className={styles.modalDetailsStack}>
+            {/* Artwork Details Section */}
             <div className={styles.modalDetailSection}>
               <h3 className={styles.modalDetailTitle}>Artwork Details</h3>
               
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Artist</span>
-                <span className={styles.modalDetailValue}>{product.artist}</span>
-              </div>
-              
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Size</span>
-                <span className={styles.modalDetailValue}>{product.size}</span>
-              </div>
+              <div className={styles.detailGrid}>
+                <div className={styles.modalDetailItem}>
+                  <span className={styles.modalDetailLabel}>Artist</span>
+                  <span className={styles.modalDetailValue}>{product.artist}</span>
+                </div>
+                
+                <div className={styles.modalDetailItem}>
+                  <span className={styles.modalDetailLabel}>Size</span>
+                  <span className={styles.modalDetailValue}>{product.size}</span>
+                </div>
 
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Medium</span>
-                <span className={styles.modalDetailValue}>{product.medium || 'N/A'}</span>
-              </div>
+                <div className={styles.modalDetailItem}>
+                  <span className={styles.modalDetailLabel}>Medium</span>
+                  <span className={styles.modalDetailValue}>{product.medium || 'N/A'}</span>
+                </div>
 
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Year Created</span>
-                <span className={styles.modalDetailValue}>{product.yearCreated ? product.yearCreated.toString() : 'N/A'}</span>
-              </div>
-
-              <div className={styles.modalDetailItem}>
-                <span className={styles.modalDetailLabel}>Owner</span>
-                <span className={styles.modalDetailValue}>{formatAddress(product.owner)}</span>
+                <div className={styles.modalDetailItem}>
+                  <span className={styles.modalDetailLabel}>Year Created</span>
+                  <span className={styles.modalDetailValue}>{product.yearCreated ? product.yearCreated.toString() : 'N/A'}</span>
+                </div>
               </div>
             </div>
             
+            {/* Description Section */}
             <div className={styles.modalDetailSection}>
               <h3 className={styles.modalDetailTitle}>Description</h3>
               <p className={styles.modalDescription}>
@@ -119,12 +122,13 @@ const ProductDetailsModal = ({ product, isOpen, onClose }) => {
               </p>
             </div>
             
+            {/* Blockchain Verification Section */}
             <div className={styles.modalDetailSection}>
               <h3 className={styles.modalDetailTitle}>Blockchain Verification</h3>
               
               <div className={styles.verificationBadge}>
                 <CheckCircle size={16} className={styles.verifyIcon} />
-                <span>Verified on Blockchain</span>
+                <span>Stored on Blockchain</span>
               </div>
               
               <p className={styles.modalDescription}>
